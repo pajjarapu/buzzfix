@@ -283,6 +283,42 @@ h3{margin:0 0 var(--s-md);font-family:var(--font-display);font-size:var(--f-call
   #mapCard .locBtn{top:calc(env(safe-area-inset-top,0px) + 60px);right:12px;width:44px;height:44px}
   .dash .locBtn{top:10px}
 }
+
+/* staff panel (lives in the issues column / sheet) */
+#staffPanel{display:none}
+body[data-role=facilities] #staffPanel{display:block}
+body[data-role=facilities] #sheet>.filters,body[data-role=facilities] #feed{display:none}
+#staffPanel{max-height:640px;overflow:auto;padding-right:4px}
+#staffPanel>.card{margin-bottom:var(--s-md);padding:var(--s-base)}
+#staffPanel .stats{grid-template-columns:repeat(2,1fr);gap:var(--s-sm);margin-bottom:var(--s-md)}
+#staffPanel .stat{padding:var(--s-md)}
+#staffPanel .stat .n{font-size:var(--f-title3)}
+#staffPanel .hbar .lab{width:120px}
+.qcards table thead{display:none}
+.qcards table,.qcards tbody{display:block}
+.qcards tr.q{display:flex;flex-wrap:wrap;align-items:center;column-gap:10px;row-gap:6px;position:relative;padding:var(--s-md) 0 var(--s-md) 48px;border-bottom:1px solid var(--divider-soft)}
+.qcards tr.q td{display:block;border:none;padding:0;background:none!important}
+.qcards tr.q td:nth-child(1){position:absolute;left:0;top:var(--s-md);font-size:var(--f-headline)}
+.qcards tr.q td:nth-child(2),.qcards tr.q td:nth-child(3){flex:1 1 100%;min-width:0}
+.qcards tr.q td:nth-child(3){font-size:var(--f-caption)}
+.qcards tr.q td:nth-child(3) br{display:none}
+.qcards tr.q td:nth-child(3) small,.qcards tr.q td:nth-child(3) a{margin-left:6px}
+.qcards tr.q td:nth-child(4){font-size:var(--f-caption);color:var(--ink-muted80)}
+.qcards tr.q td:nth-child(4)::before{content:"👍 "}
+.qcards tr.q td:nth-child(5),.qcards tr.q td:nth-child(7){font-size:var(--f-caption);color:var(--ink-muted48)}
+.qcards tr.q td:nth-child(8){margin-left:auto}
+.qcards tr.q:hover{background:var(--pearl)}
+.qcards td.empty{display:block}
+/* location button inside Google's control stack (desktop) */
+.locBtn.inmap{position:static;margin:0 10px 10px 0;box-shadow:rgba(0,0,0,.3) 0 1px 4px -1px;border:none}
+@media(max-width:700px){
+  #staffPanel{max-height:none;flex:1;min-height:0;overflow:auto;padding:0 0 var(--s-base)}
+  #staffPanel .stats{display:flex;overflow-x:auto;gap:var(--s-sm);scrollbar-width:none;margin:0 0 var(--s-md)}
+  #staffPanel .stat{flex:0 0 120px;padding:var(--s-sm) var(--s-md);border-top-width:2px}
+  #staffPanel .stat .n{font-size:var(--f-headline)}
+  #staffPanel .stat .l{font-size:var(--f-micro);margin-top:2px}
+  #staffPanel .stat .d{display:none}
+}
 </style>
 </head>
 <body>
@@ -306,8 +342,8 @@ h3{margin:0 0 var(--s-md);font-family:var(--font-display);font-size:var(--f-call
 
 <main>
 <section class="view active" id="v-map">
-  <h2>What's broken on campus right now</h2>
-  <p class="sub">Every open issue, live. Upvote the ones affecting you; the most-felt problems rise to the top of the facilities queue.</p>
+  <h2 id="mapTitle">What's broken on campus right now</h2>
+  <p class="sub" id="mapSub">Every open issue, live. Upvote the ones affecting you; the most-felt problems rise to the top of the facilities queue.</p>
   <div class="mapgrid">
     <div class="card" id="mapCard">
       <div class="maptools"><div id="searchSlot"></div>
@@ -327,6 +363,13 @@ h3{margin:0 0 var(--s-md);font-family:var(--font-display);font-size:var(--f-call
         <select id="fSort"><option value="votes">Most upvoted</option><option value="new">Newest</option></select>
       </div>
       <div class="feed" id="feed"></div>
+      <div id="staffPanel">
+        <div class="stats" id="stats"></div>
+        <div class="card qcards"><h3>Priority queue</h3><table><thead><tr><th>Score</th><th>Issue</th><th>Location</th><th>👍</th><th>Age</th><th>Status</th><th>Crew</th><th></th></tr></thead><tbody id="queue"></tbody></table></div>
+        <div class="card"><h3>Open issues by building</h3><div id="byBld"></div></div>
+        <div class="card"><h3>🔁 Recurring hotspots</h3><div id="hot"></div><small style="color:var(--ink-muted48)">Same problem, same place, 2+ times in 90 days. Candidates for replacement, not another patch.</small></div>
+        <div class="card"><h3>Avg. days to fix by category</h3><div id="ttf"></div></div>
+      </div>
     </div>
   </div>
 </section>
@@ -360,28 +403,6 @@ h3{margin:0 0 var(--s-md);font-family:var(--font-display);font-size:var(--f-call
   <div class="feed" id="mine" style="max-height:none"></div>
 </section>
 
-<section class="view" id="v-dash">
-  <h2>Facilities dashboard</h2>
-  <p class="sub">One de-duplicated queue, ranked by severity, how many people are affected, accessibility impact and age. Tickets can sync to the existing work-order system.</p>
-  <div class="stats" id="stats"></div>
-  <div class="dash">
-    <div>
-    <div class="card" style="padding:0;overflow:hidden;margin-bottom:18px">
-      <div style="padding:14px 16px 8px;display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0">Live issue map</h3><small style="color:var(--ink-muted48)">Click a pin to open the issue</small></div>
-      <div class="mapwrap" style="height:420px;overflow:hidden"><svg id="dashSvg" viewBox="0 0 900 640" style="width:100%;height:100%;display:block;background:var(--parchment)" preserveAspectRatio="xMidYMid meet"></svg><div class="real" id="dashReal"></div><button class="locBtn" data-locmap="dashReal" aria-label="Go to my location" title="Go to my location"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M20.5 3.5 3.9 10.6c-.6.3-.5 1.1.1 1.3l6.5 1.6 1.6 6.5c.2.6 1 .7 1.3.1z"/></svg></button><div class="maptag" id="dashTag">Drawn map · live map loads when online</div></div>
-    </div>
-    <div class="card" style="overflow:auto">
-      <h3>Priority queue</h3>
-      <table><thead><tr><th>Score</th><th>Issue</th><th>Location</th><th>👍</th><th>Age</th><th>Status</th><th>Crew</th><th></th></tr></thead><tbody id="queue"></tbody></table>
-    </div>
-    </div>
-    <div>
-      <div class="card"><h3>Open issues by building</h3><div id="byBld"></div></div>
-      <div class="card" style="margin-top:16px"><h3>🔁 Recurring hotspots</h3><div id="hot"></div><small style="color:var(--ink-muted48)">Same problem, same place, 2+ times in 90 days. Candidates for replacement, not another patch.</small></div>
-      <div class="card" style="margin-top:16px"><h3>Avg. days to fix by category</h3><div id="ttf"></div></div>
-    </div>
-  </div>
-</section>
 <p class="note">BuzzFix prototype. Building names are real Georgia Tech locations (map simplified); all reports are fictional sample data; "AI" triage is simulated with keyword rules. Nothing is sent anywhere, and changes reset on reload.</p>
 </main>
 
@@ -527,17 +548,18 @@ const drawnPin=i=>`<g transform="translate(-9,-9) scale(.62)">${pinShape(i)}</g>
 const RM={};
 function initMaps(){
   if(!GOOGLE_MAPS_API_KEY)return initLeaflet();
-  window.__gInit=()=>{gMake('realMap','mapTag');gMake('dashReal','dashTag');renderAll();setTimeout(refreshReal,50);if($('#v-report').classList.contains('active'))initReportMap()};
-  window.gm_authFailure=()=>{gFailed=true;resetReportMap();['realMap','dashReal'].forEach(id=>{const el=document.getElementById(id);el.innerHTML='';el.className='real';delete RM[id]});initLeaflet();renderAll();toast('Google Maps rejected the key, so the backup map is shown. Check the key and its allowed websites.')};
+  window.__gInit=()=>{gMake('realMap','mapTag');renderAll();setTimeout(refreshReal,50);if($('#v-report').classList.contains('active'))initReportMap()};
+  window.gm_authFailure=()=>{gFailed=true;resetReportMap();['realMap'].forEach(id=>{const el=document.getElementById(id);el.innerHTML='';el.className='real';delete RM[id]});initLeaflet();renderAll();toast('Google Maps rejected the key, so the backup map is shown. Check the key and its allowed websites.')};
   const sc=document.createElement('script');sc.async=true;sc.onerror=()=>{gFailed=true;resetReportMap();initLeaflet();renderAll()};
   sc.src=`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GOOGLE_MAPS_API_KEY)}&callback=__gInit&loading=async`;
   document.head.appendChild(sc);
 }
-function initLeaflet(){initReal('realMap','mapTag',[HOME.lat,HOME.lng],HOME_Z);initReal('dashReal','dashTag',[HOME.lat,HOME.lng],HOME_Z)}
+function initLeaflet(){initReal('realMap','mapTag',[HOME.lat,HOME.lng],HOME_Z)}
 function gMake(id,tagId){
   const el=document.getElementById(id);
   const m=new google.maps.Map(el,{center:HOME,zoom:HOME_Z,mapTypeControl:!MQ.matches,mapTypeControlOptions:{position:google.maps.ControlPosition.RIGHT_BOTTOM},streetViewControl:false,fullscreenControl:!MQ.matches,zoomControl:!MQ.matches,clickableIcons:false,gestureHandling:MQ.matches&&id==='realMap'?'greedy':'cooperative'});
-  RM[id]={g:true,m,markers:[],ok:true};el.classList.add('ok');const t=document.getElementById(tagId);if(t)t.style.display='none';
+  RM[id]={g:true,m,markers:[],ok:true};
+  const lb=el.parentElement.querySelector('.locBtn');if(lb&&!MQ.matches){lb.classList.add('inmap');lb.onclick=e=>{e.stopPropagation();locateTo(id)};m.controls[google.maps.ControlPosition.RIGHT_BOTTOM].push(lb)}el.classList.add('ok');const t=document.getElementById(tagId);if(t)t.style.display='none';
 }
 function initReal(id,tagId,center,zoom){
   if(typeof L==='undefined')return;
@@ -560,7 +582,7 @@ function pinsTo(id,list){const r=RM[id];if(!r)return;
 function gFit(r){if(!r.markers.length)return;const b=new google.maps.LatLngBounds();r.markers.forEach(k=>b.extend(k.getPosition()));r.m.fitBounds(b,40)}
 function refreshReal(){Object.values(RM).forEach(r=>{if(!r.g)r.m.invalidateSize()})} // keep the user's view; maps start at HOME
 function drawMap(){
-  const cat=$('#fCat').value,st=$('#fStatus').value;
+  const staff=role==='facilities',cat=staff?'':$('#fCat').value,st=staff?'open':$('#fStatus').value;
   let h=baseMap();
   issues.filter(i=>(!cat||i.cat===cat)&&(st==='open'?i.status!=='Fixed':!st||i.status===st)).forEach(i=>{
     const r=5+Math.min(6,Math.log2(1+i.votes)*1.3),f=fill(i.status);
@@ -748,10 +770,8 @@ function renderDash(){
    [avgFix.toFixed(1),'Avg. days to fix',''],[dupesMerged,'Duplicate reports avoided','<span style="color:var(--success)">Upvotes instead of re-reports</span>'],
    [open.reduce((a,i)=>a+i.votes,0),'People currently affected','']
   ].map(([n,l,d])=>`<div class="card stat"><div class="n">${n}</div><div class="l">${l}</div>${d?`<div class="d">${d}</div>`:''}</div>`).join('');
-  let dh=baseMap();open.forEach(i=>{const r=6+Math.min(7,Math.log2(1+i.votes)*1.4);dh+=`<g class="pin" data-id="${i.id}" transform="translate(${i.x},${i.y})">${drawnPin(i)}<title>${esc(i.title)} · ${i.status}</title></g>`});
-  $('#dashSvg').innerHTML=dh;pinsTo('dashReal',open);
-  const q=open.slice().sort((a,b)=>score(b)-score(a));
-  $('#queue').innerHTML=q.map(i=>`<tr class="q" data-id="${i.id}" style="cursor:pointer"><td class="score">${score(i)}</td><td><div style="display:flex;gap:8px;align-items:center"><span>${CATS[i.cat].ico}</span><div><b>${esc(i.title)}</b><div class="chips" style="margin-top:3px">${flags(i)}</div></div></div></td><td>${esc(B[i.b].name)}<br><small style="color:var(--ink-muted48)">${esc(i.loc)}</small><br><a href="${gmaps(i)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:12px;color:var(--primary)">📍 Open in Maps ↗</a></td><td>${i.votes}</td><td>${ago(i.created)}</td><td><span class="${stc(i.status)}">${i.status}</span></td><td><small>${esc(i.crew||'Unassigned')}</small></td><td><button class="btn sm" data-adv="${i.id}">${i.status==='Reported'?'Assign':i.status==='Assigned'?'Start':'Mark fixed'}</button></td></tr>`).join('')||'<tr><td colspan="8" class="empty">Queue is clear 🎉</td></tr>';
+  const q=open.filter(i=>!locFilter||i.b===locFilter).sort((a,b)=>score(b)-score(a));
+  $('#queue').innerHTML=q.map(i=>`<tr class="q" data-id="${i.id}" style="cursor:pointer"><td class="score">${score(i)}</td><td><div style="display:flex;gap:8px;align-items:center"><span>${CATS[i.cat].ico}</span><div><b>${esc(i.title)}</b><div class="chips" style="margin-top:3px">${flags(i)}</div></div></div></td><td>${esc(B[i.b].name)}<br><small style="color:var(--ink-muted48)">${esc(i.loc)}</small><br><a href="${gmaps(i)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:12px;color:var(--primary)">📍 Open in Maps ↗</a></td><td>${i.votes}</td><td>${ago(i.created)}</td><td><span class="${stc(i.status)}">${i.status}</span></td><td><small>${esc(i.crew||'Unassigned')}</small></td><td><button class="btn sm" data-adv="${i.id}">${i.status==='Reported'?'Assign':i.status==='Assigned'?'Start':'Mark fixed'}</button></td></tr>`).join('')||(locFilter?`<tr><td colspan="8" class="empty">No open issues at ${esc(B[locFilter].name)}.</td></tr>`:'<tr><td colspan="8" class="empty">Queue is clear 🎉</td></tr>');
   const bc={};open.forEach(i=>bc[i.b]=(bc[i.b]||0)+1);const mx=Math.max(1,...Object.values(bc));
   $('#byBld').innerHTML=Object.entries(bc).sort((a,b)=>b[1]-a[1]).map(([b,n])=>`<div class="hbar"><span class="lab">${esc(B[b].name)}</span><span class="track"><i style="width:${n/mx*100}%"></i></span><span class="v">${n}</span></div>`).join('');
   const groups={};issues.forEach(i=>{const k=i.b+'|'+i.cat+'|'+i.loc;(groups[k]=groups[k]||[]).push(i)});
@@ -762,9 +782,9 @@ function renderDash(){
   $('#ttf').innerHTML=Object.entries(bycat).sort((a,b)=>avg(b[1])-avg(a[1])).map(([c,a])=>`<div class="hbar"><span class="lab">${CATS[c].ico} ${esc(c)}</span><span class="track"><i style="width:${avg(a)/mt*100}%;background:var(--primary)"></i></span><span class="v">${avg(a).toFixed(1)}</span></div>`).join('');
 }
 
-function show(v){const sec=(v==='map'&&role==='facilities')?'dash':v;if(v==='report')setTimeout(initReportMap,30);document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.id==='v-'+sec));document.querySelectorAll('#nav button,#dock button').forEach(b=>b.classList.toggle('active',b.dataset.v===v));document.body.dataset.view=sec;closeDrawer();$('#mePop').hidden=true;window.scrollTo(0,0);setTimeout(refreshReal,30);if(sec==='map')snapSheet(sheetState)}
+function show(v){const sec=v;if(v==='report')setTimeout(initReportMap,30);document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.id==='v-'+sec));document.querySelectorAll('#nav button,#dock button').forEach(b=>b.classList.toggle('active',b.dataset.v===v));document.body.dataset.view=sec;closeDrawer();$('#mePop').hidden=true;window.scrollTo(0,0);setTimeout(refreshReal,30);if(sec==='map')snapSheet(sheetState)}
 $('#nav').onclick=e=>{const b=e.target.closest('button');if(b)show(b.dataset.v)};
-function setRole(r){role=r;document.querySelectorAll('#role button,#mePop button').forEach(b=>b.classList.toggle('on',b.dataset.r===r));
+function setRole(r){role=r;document.body.dataset.role=r;setMapTitle();drawMap();document.querySelectorAll('#role button,#mePop button').forEach(b=>b.classList.toggle('on',b.dataset.r===r));
   show('map')}
 $('#role').onclick=e=>{const r=e.target.dataset.r;if(r)setRole(r)};
 $('#dock').onclick=e=>{const b=e.target.closest('button');if(b)show(b.dataset.v)};
@@ -783,8 +803,8 @@ function focusMap(b){const r=RM.realMap;if(!r)return;const pos={lat:b.lat,lng:b.
   if(searchMk){searchMk.g?searchMk.k.setMap(null):r.m.removeLayer&&searchMk.k.remove();searchMk=null}
   if(r.g){r.m.panTo(pos);r.m.setZoom(18);searchMk={g:true,k:new google.maps.Marker({map:r.m,position:pos,title:b.name,zIndex:1})}}
   else{r.m.setView([b.lat,b.lng],18);searchMk={g:false,k:L.circleMarker([b.lat,b.lng],{radius:8,color:'#051e39',weight:3,fillColor:'#fff',fillOpacity:1}).bindTooltip(esc(b.name)).addTo(r.m)}}}
-function chooseLoc(id){const b=B[id];if(!b)return;locFilter=id;$('#q').value=b.name;$('#qRes').hidden=true;$('#qClear').hidden=false;$('#q').blur();renderFeed();focusMap(b);snapSheet('half')}
-function clearLoc(){locFilter=null;$('#q').value='';$('#qClear').hidden=true;$('#qRes').hidden=true;renderFeed();
+function chooseLoc(id){const b=B[id];if(!b)return;locFilter=id;$('#q').value=b.name;$('#qRes').hidden=true;$('#qClear').hidden=false;$('#q').blur();renderFeed();renderDash();focusMap(b);snapSheet('half')}
+function clearLoc(){locFilter=null;$('#q').value='';$('#qClear').hidden=true;$('#qRes').hidden=true;renderFeed();renderDash();
   if(searchMk){searchMk.g?searchMk.k.setMap(null):searchMk.k.remove();searchMk=null}}
 $('#q').addEventListener('input',()=>{if(!$('#q').value&&locFilter)clearLoc();else renderResults()});
 $('#q').addEventListener('focus',()=>{snapSheet('full');if($('#q').value&&!locFilter)renderResults()});
@@ -807,7 +827,9 @@ function snapSheet(s){if(!MQ.matches){SH.style.height='';return}sheetState=s;SH.
     st=null;snapSheet(s)};
   top.addEventListener('pointerup',end);top.addEventListener('pointercancel',end)})();
 addEventListener('resize',()=>{snapSheet(sheetState);Object.values(RM).forEach(r=>{if(!r.g)r.m.invalidateSize()})});
-document.body.dataset.view='map';
+document.body.dataset.view='map';document.body.dataset.role=role;
+function setMapTitle(){const f=role==='facilities';$('#mapTitle').textContent=f?'Facilities dashboard':"What's broken on campus right now";
+  $('#mapSub').textContent=f?'One de-duplicated queue, ranked by severity, how many people are affected, accessibility impact and age. Tickets can sync to the existing work-order system.':'Every open issue, live. Upvote the ones affecting you; the most-felt problems rise to the top of the facilities queue.'}
 
 // ---- your location (blue dot) + recenter button ----
 let me=null,watchId=null,pendingLoc=null;
