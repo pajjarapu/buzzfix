@@ -240,7 +240,7 @@ h3{margin:0 0 var(--s-md);font-family:var(--font-display);font-size:var(--f-call
   body[data-view=map] .note{display:none}
   #v-map>h2,#v-map>.sub{display:none}
   .mapgrid{display:block}
-  #mapCard{position:fixed;left:0;right:0;top:0;bottom:var(--dockH);border:none;border-radius:0;z-index:1}
+  #mapCard{position:fixed;left:0;right:0;top:0;bottom:var(--dockH);height:auto;align-self:stretch;justify-self:stretch;border:none;border-radius:0;z-index:1}
   #mapCard .mapwrap{height:100%}
   #map{height:100%}
   .maptools{top:calc(env(safe-area-inset-top,0px) + 12px);right:64px}
@@ -260,6 +260,16 @@ h3{margin:0 0 var(--s-md);font-family:var(--font-display);font-size:var(--f-call
   #sheet .feed{max-height:none;flex:1;min-height:0;overflow:auto;padding-bottom:var(--s-base);-webkit-overflow-scrolling:touch}
   #sheet .filters{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
   #sheet .filters select{flex:none}
+}
+
+/* desktop: search floats on the map, legend bottom-left */
+#searchSlot{flex:0 1 360px;min-width:220px}
+#searchSlot .search{margin:0}
+#searchSlot .search input{background:rgba(255,255,255,.96);border-color:var(--hairline)}
+#mapCard>.legend{position:absolute;left:12px;bottom:12px;z-index:5}
+@media(max-width:700px){
+  #mapCard>.legend{top:calc(env(safe-area-inset-top,0px) + 12px);bottom:auto;left:12px;right:auto}
+  #searchSlot{display:none}
 }
 </style>
 </head>
@@ -290,10 +300,10 @@ h3{margin:0 0 var(--s-md);font-family:var(--font-display);font-size:var(--f-call
   <p class="sub">Every open issue, live. Upvote the ones affecting you; the most-felt problems rise to the top of the facilities queue.</p>
   <div class="mapgrid">
     <div class="card" id="mapCard">
-      <div class="maptools">
-        <div class="legend"><span><i style="background:var(--reported)"></i>Reported</span><span><i style="background:var(--assigned)"></i>Assigned</span><span><i style="background:var(--progress)"></i>In progress</span><span><i style="background:var(--fixed)"></i>Fixed</span></div>
+      <div class="maptools"><div id="searchSlot"></div>
         <button class="btn gold sm" onclick="show('report')">+ Report here</button>
       </div>
+      <div class="legend"><span><i style="background:var(--reported)"></i>Reported</span><span><i style="background:var(--assigned)"></i>Assigned</span><span><i style="background:var(--progress)"></i>In progress</span><span><i style="background:var(--fixed)"></i>Fixed</span></div>
       <div class="mapwrap"><svg id="map" viewBox="0 0 900 640"></svg><div class="real" id="realMap"></div><div class="maptag" id="mapTag">Drawn map · live map loads when online</div></div>
     </div>
     <div id="sheet">
@@ -515,7 +525,7 @@ function initMaps(){
 function initLeaflet(){initReal('realMap','mapTag',[33.7758,-84.3975],16);initReal('dashReal','dashTag',[33.7752,-84.3970],16)}
 function gMake(id,tagId){
   const el=document.getElementById(id);
-  const m=new google.maps.Map(el,{center:{lat:33.7758,lng:-84.3975},zoom:16,mapTypeControl:!MQ.matches,streetViewControl:false,fullscreenControl:!MQ.matches,zoomControl:!MQ.matches,clickableIcons:false,gestureHandling:MQ.matches&&id==='realMap'?'greedy':'cooperative'});
+  const m=new google.maps.Map(el,{center:{lat:33.7758,lng:-84.3975},zoom:16,mapTypeControl:!MQ.matches,mapTypeControlOptions:{position:google.maps.ControlPosition.RIGHT_BOTTOM},streetViewControl:false,fullscreenControl:!MQ.matches,zoomControl:!MQ.matches,clickableIcons:false,gestureHandling:MQ.matches&&id==='realMap'?'greedy':'cooperative'});
   RM[id]={g:true,m,markers:[],ok:true};el.classList.add('ok');const t=document.getElementById(tagId);if(t)t.style.display='none';
 }
 function initReal(id,tagId,center,zoom){
@@ -787,6 +797,9 @@ function snapSheet(s){if(!MQ.matches){SH.style.height='';return}sheetState=s;SH.
   top.addEventListener('pointerup',end);top.addEventListener('pointercancel',end)})();
 addEventListener('resize',()=>{snapSheet(sheetState);Object.values(RM).forEach(r=>{if(!r.g)r.m.invalidateSize()})});
 document.body.dataset.view='map';
+// search lives on the map on desktop, in the bottom sheet on phones
+function placeSearch(){const el=$('.search'),to=MQ.matches?$('.sheet-top'):$('#searchSlot');if(el.parentElement!==to)to.appendChild(el)}
+MQ.addEventListener('change',()=>{placeSearch();snapSheet(sheetState)});placeSearch();
 function renderAll(){renderFeed();renderMine();renderDash()}
 initMaps();
 renderAll();drawMini();snapSheet('half');
