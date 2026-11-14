@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>BuzzFix · Campus Maintenance Prototype</title>
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Slab:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
@@ -206,6 +206,61 @@ h3{margin:0 0 var(--s-md);font-family:var(--font-display);font-size:var(--f-call
   .dash tr.q td:nth-child(8){margin-left:auto}
   .dash tr.q:hover td{background:none}
 }
+
+/* ---- search ---- */
+.search{position:relative;margin-bottom:var(--s-md)}
+.search>svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-muted48);pointer-events:none}
+.search input{width:100%;padding:10px 36px 10px 38px;border:1px solid var(--hairline);border-radius:var(--cornering);background:var(--parchment);font-size:16px;outline:none;-webkit-appearance:none;appearance:none}
+.search input:focus{border-color:var(--Gold);background:var(--canvas)}
+.search input::-webkit-search-cancel-button{display:none}
+#qClear{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:26px;height:26px;border:none;border-radius:var(--cornering);background:none;color:var(--ink-muted48);font-size:20px;line-height:1}
+#qClear:active{transform:translateY(-50%) scale(.9)}
+.results{position:absolute;left:0;right:0;top:calc(100% + 4px);background:var(--canvas);border:1px solid var(--hairline);border-radius:var(--cornering);z-index:30;max-height:320px;overflow:auto}
+.results button{display:flex;justify-content:space-between;align-items:center;gap:var(--s-sm);width:100%;text-align:left;padding:10px 12px;border:none;border-bottom:1px solid var(--divider-soft);background:none;font-size:var(--f-callout)}
+.results button:active{transform:none}.results button:hover{background:var(--pearl)}
+.results small{display:block;color:var(--ink-muted48);font-size:var(--f-micro)}
+.results em{font-style:normal;font-size:var(--f-micro);font-weight:500;color:var(--danger);white-space:nowrap}
+.results .none{padding:12px;color:var(--ink-muted48)}
+/* ---- phone-only chrome hidden on desktop ---- */
+#dock,#meBtn,#mePop,.sheet-grab{display:none}
+@media(max-width:700px){
+  :root{--dockH:calc(56px + env(safe-area-inset-bottom,0px))}
+  header{padding:calc(var(--s-sm) + env(safe-area-inset-top,0px)) var(--s-base) var(--s-sm)}
+  header nav,.proto{display:none}
+  main{padding-bottom:calc(var(--dockH) + var(--s-xl))}
+  .toast{bottom:calc(var(--dockH) + 12px)}
+  /* dock */
+  #dock{display:flex;position:fixed;left:0;right:0;bottom:0;height:var(--dockH);padding-bottom:env(safe-area-inset-bottom,0px);background:rgba(255,255,255,.94);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top:1px solid var(--hairline);z-index:35}
+  #dock button{flex:1;display:grid;place-items:center;background:none;border:none;color:var(--ink-muted48)}
+  #dock button.active{color:var(--Gold);box-shadow:none}
+  /* full-screen map view */
+  body[data-view=map]{overflow:hidden}
+  body[data-view=map] header{display:none}
+  body[data-view=map] main{padding:0}
+  body[data-view=map] .note{display:none}
+  #v-map>h2,#v-map>.sub{display:none}
+  .mapgrid{display:block}
+  #mapCard{position:fixed;left:0;right:0;top:0;bottom:var(--dockH);border:none;border-radius:0;z-index:1}
+  #mapCard .mapwrap{height:100%}
+  #map{height:100%}
+  .maptools{top:calc(env(safe-area-inset-top,0px) + 12px);right:64px}
+  .maptools .btn{display:none}
+  .maptag{bottom:auto;top:calc(env(safe-area-inset-top,0px) + 48px);right:auto;left:12px}
+  body[data-view=map] #meBtn{display:grid;place-items:center;position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);right:12px;width:44px;height:44px;border:1px solid var(--hairline);border-radius:var(--cornering);background:rgba(255,255,255,.94);color:var(--Blue);z-index:25}
+  #mePop:not([hidden]){display:block;position:fixed;top:calc(env(safe-area-inset-top,0px) + 58px);right:12px;width:200px;background:var(--canvas);border:1px solid var(--hairline);border-radius:var(--cornering);z-index:26;padding:var(--s-xs) 0}
+  .mepop-t{font-size:var(--f-micro);color:var(--ink-muted48);padding:var(--s-sm) var(--s-md) var(--s-xs)}
+  #mePop button{display:block;width:100%;text-align:left;background:none;border:none;padding:10px var(--s-md);font-size:var(--f-callout)}
+  #mePop button.on{color:var(--Gold);font-weight:700}
+  #mePop button.on::after{content:" ✓"}
+  /* bottom sheet */
+  #sheet{position:fixed;left:0;right:0;bottom:var(--dockH);height:45vh;background:var(--canvas);border-top:1px solid var(--hairline);border-radius:var(--cornering) var(--cornering) 0 0;z-index:20;display:flex;flex-direction:column;padding:0 var(--s-base);transition:height .3s var(--ease);box-shadow:0 -1px 12px rgba(5,30,57,.12)}
+  #sheet.dragging{transition:none}
+  .sheet-top{touch-action:none;cursor:grab;padding-bottom:2px}
+  .sheet-grab{display:block;width:40px;height:5px;border-radius:3px;background:rgba(5,30,57,.25);margin:8px auto 10px}
+  #sheet .feed{max-height:none;flex:1;min-height:0;overflow:auto;padding-bottom:var(--s-base);-webkit-overflow-scrolling:touch}
+  #sheet .filters{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  #sheet .filters select{flex:none}
+}
 </style>
 </head>
 <body>
@@ -219,6 +274,15 @@ h3{margin:0 0 var(--s-md);font-family:var(--font-display);font-size:var(--f-call
   </nav>
   <div class="role" id="role"><button data-r="student" class="on">Student</button><button data-r="facilities">Facilities staff</button></div>
 </header>
+<!-- phone-only: bottom dock (icons in the style of SF Symbols) and floating role button over the map -->
+<nav id="dock" aria-label="Main">
+  <button data-v="map" class="active" aria-label="Live map" title="Live map"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20z"/><path d="M9 4v13.5M15 6.5V20"/></svg></button>
+  <button data-v="report" aria-label="Report an issue" title="Report an issue"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M5 4.5h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-8l-5 3.5v-3.5H5a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z"/><path d="M12 8v6M9 11h6"/></svg></button>
+  <button data-v="mine" aria-label="My reports" title="My reports"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 7h11M9 12h11M9 17h11"/><circle cx="4.5" cy="7" r="1.2" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="4.5" cy="17" r="1.2" fill="currentColor" stroke="none"/></svg></button>
+  <button data-v="dash" id="dockDash" style="display:none" aria-label="Facilities dashboard" title="Facilities dashboard"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 20v-7M10 20V5M15 20v-9M20 20V8"/></svg></button>
+</nav>
+<button id="meBtn" aria-label="Switch view: student or facilities staff" title="Switch view"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9.2"/><circle cx="12" cy="10" r="3.2"/><path d="M6.4 18.4c1.3-2.1 3.2-3.2 5.6-3.2s4.3 1.1 5.6 3.2"/></svg></button>
+<div id="mePop" hidden><div class="mepop-t">View as</div><button data-r="student" class="on">Student</button><button data-r="facilities">Facilities staff</button></div>
 
 <main>
 <section class="view active" id="v-map">
@@ -232,7 +296,11 @@ h3{margin:0 0 var(--s-md);font-family:var(--font-display);font-size:var(--f-call
       </div>
       <div class="mapwrap"><svg id="map" viewBox="0 0 900 640"></svg><div class="real" id="realMap"></div><div class="maptag" id="mapTag">Drawn map · live map loads when online</div></div>
     </div>
-    <div>
+    <div id="sheet">
+      <div class="sheet-top">
+        <div class="sheet-grab" aria-hidden="true"></div>
+        <div class="search"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 20 20"/></svg><input id="q" type="search" placeholder="Search buildings &amp; places" autocomplete="off" aria-label="Search buildings and places"><button id="qClear" type="button" hidden aria-label="Clear search">&times;</button><div class="results" id="qRes" hidden></div></div>
+      </div>
       <div class="filters">
         <select id="fCat"><option value="">All categories</option></select>
         <select id="fStatus"><option value="open">Open issues</option><option value="">All incl. fixed</option><option value="Fixed">Fixed</option></select>
@@ -305,6 +373,8 @@ h3{margin:0 0 var(--s-md);font-family:var(--font-display);font-size:var(--f-call
 // ===== GOOGLE MAPS =====
 // Paste your Google Maps JavaScript API browser key between the quotes (it starts with "AIza").
 // Leave it empty to use the free OpenStreetMap/Esri backup map.
+const MQ=matchMedia('(max-width:700px)'); // phone layout
+let locFilter=null,searchMk=null;
 const GOOGLE_MAPS_API_KEY='AIzaSyA34YYSo3XxiBegv5Dq0J4WeaM4lIoA7uI';
 // ========================
 // Simplified Georgia Tech campus. Positions are approximate (lat/lng projected onto the drawing).
@@ -445,7 +515,7 @@ function initMaps(){
 function initLeaflet(){initReal('realMap','mapTag',[33.7758,-84.3975],16);initReal('dashReal','dashTag',[33.7752,-84.3970],16)}
 function gMake(id,tagId){
   const el=document.getElementById(id);
-  const m=new google.maps.Map(el,{center:{lat:33.7758,lng:-84.3975},zoom:16,mapTypeControl:true,streetViewControl:false,fullscreenControl:true,clickableIcons:false,gestureHandling:'cooperative'});
+  const m=new google.maps.Map(el,{center:{lat:33.7758,lng:-84.3975},zoom:16,mapTypeControl:!MQ.matches,streetViewControl:false,fullscreenControl:!MQ.matches,zoomControl:!MQ.matches,clickableIcons:false,gestureHandling:MQ.matches&&id==='realMap'?'greedy':'cooperative'});
   RM[id]={g:true,m,markers:[],ok:true};el.classList.add('ok');const t=document.getElementById(tagId);if(t)t.style.display='none';
 }
 function initReal(id,tagId,center,zoom){
@@ -484,8 +554,8 @@ function card(i){return`<div class="card issue" data-id="${i.id}"><div class="ic
  ${i.status!=='Fixed'?`<button class="vote ${i.voted?'on':''}" data-vote="${i.id}"><span>▲</span><b>${i.votes}</b></button>`:`<div class="vote"><span>✓</span><b>${i.votes}</b></div>`}</div>`}
 function renderFeed(){
   const cat=$('#fCat').value,st=$('#fStatus').value,so=$('#fSort').value;
-  const l=issues.filter(i=>(!cat||i.cat===cat)&&(st==='open'?i.status!=='Fixed':!st||i.status===st)).sort((a,b)=>so==='votes'?b.votes-a.votes:b.created-a.created);
-  $('#feed').innerHTML=l.length?l.map(card).join(''):'<div class="card empty">Nothing here. Nice.</div>';
+  const l=issues.filter(i=>(!cat||i.cat===cat)&&(st==='open'?i.status!=='Fixed':!st||i.status===st)&&(!locFilter||i.b===locFilter)).sort((a,b)=>so==='votes'?b.votes-a.votes:b.created-a.created);
+  $('#feed').innerHTML=l.length?l.map(card).join(''):`<div class="card empty">${locFilter?'No issues reported at '+esc(B[locFilter].name)+'.':'Nothing here. Nice.'}</div>`;
   drawMap();
 }
 $('#fCat').innerHTML+=Object.keys(CATS).map(c=>`<option>${c}</option>`).join('');
@@ -671,13 +741,55 @@ function renderDash(){
   $('#ttf').innerHTML=Object.entries(bycat).sort((a,b)=>avg(b[1])-avg(a[1])).map(([c,a])=>`<div class="hbar"><span class="lab">${CATS[c].ico} ${esc(c)}</span><span class="track"><i style="width:${avg(a)/mt*100}%;background:var(--primary)"></i></span><span class="v">${avg(a).toFixed(1)}</span></div>`).join('');
 }
 
-function show(v){if(v==='report')setTimeout(initReportMap,30);document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.id==='v-'+v));document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('active',b.dataset.v===v));closeDrawer();window.scrollTo(0,0);setTimeout(refreshReal,30)}
+function show(v){if(v==='report')setTimeout(initReportMap,30);document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.id==='v-'+v));document.querySelectorAll('#nav button,#dock button').forEach(b=>b.classList.toggle('active',b.dataset.v===v));document.body.dataset.view=v;closeDrawer();$('#mePop').hidden=true;window.scrollTo(0,0);setTimeout(refreshReal,30);if(v==='map')snapSheet(sheetState)}
 $('#nav').onclick=e=>{const b=e.target.closest('button');if(b)show(b.dataset.v)};
-$('#role').onclick=e=>{const r=e.target.dataset.r;if(!r)return;role=r;document.querySelectorAll('#role button').forEach(b=>b.classList.toggle('on',b.dataset.r===r));
-  $('#navDash').style.display=r==='facilities'?'':'none';show(r==='facilities'?'dash':'map')};
+function setRole(r){role=r;document.querySelectorAll('#role button,#mePop button').forEach(b=>b.classList.toggle('on',b.dataset.r===r));
+  $('#navDash').style.display=$('#dockDash').style.display=r==='facilities'?'':'none';show(r==='facilities'?'dash':'map')}
+$('#role').onclick=e=>{const r=e.target.dataset.r;if(r)setRole(r)};
+$('#dock').onclick=e=>{const b=e.target.closest('button');if(b)show(b.dataset.v)};
+$('#meBtn').onclick=e=>{e.stopPropagation();$('#mePop').hidden=!$('#mePop').hidden};
+$('#mePop').onclick=e=>{const b=e.target.closest('button[data-r]');if(b){$('#mePop').hidden=true;setRole(b.dataset.r)}};
+document.addEventListener('click',e=>{if(!e.target.closest('#mePop,#meBtn'))$('#mePop').hidden=true;if(!e.target.closest('.search'))$('#qRes').hidden=true});
+
+// ---- location search (all campus buildings) ----
+const openAt=id=>issues.filter(i=>i.b===id&&i.status!=='Fixed').length;
+function searchMatches(q){q=q.trim().toLowerCase();if(!q)return[];const w=q.split(/\s+/);
+  return BLD.filter(b=>w.every(x=>b.name.toLowerCase().includes(x))).sort((a,b)=>(a.name.toLowerCase().startsWith(q)?0:1)-(b.name.toLowerCase().startsWith(q)?0:1)||a.name.localeCompare(b.name)).slice(0,8)}
+function renderResults(){const m=searchMatches($('#q').value);$('#qClear').hidden=!$('#q').value;
+  $('#qRes').innerHTML=m.length?m.map(b=>{const n=openAt(b.id);return`<button type="button" data-loc="${b.id}"><span>${esc(b.name)}<small>${esc(b.grp)}</small></span><em>${n?n+' open':''}</em></button>`}).join(''):($('#q').value.trim()?'<div class="none">No matching building</div>':'');
+  $('#qRes').hidden=!$('#q').value.trim()}
+function focusMap(b){const r=RM.realMap;if(!r)return;const pos={lat:b.lat,lng:b.lng};
+  if(searchMk){searchMk.g?searchMk.k.setMap(null):r.m.removeLayer&&searchMk.k.remove();searchMk=null}
+  if(r.g){r.m.panTo(pos);r.m.setZoom(18);searchMk={g:true,k:new google.maps.Marker({map:r.m,position:pos,title:b.name,zIndex:1})}}
+  else{r.m.setView([b.lat,b.lng],18);searchMk={g:false,k:L.circleMarker([b.lat,b.lng],{radius:8,color:'#051e39',weight:3,fillColor:'#fff',fillOpacity:1}).bindTooltip(esc(b.name)).addTo(r.m)}}}
+function chooseLoc(id){const b=B[id];if(!b)return;locFilter=id;$('#q').value=b.name;$('#qRes').hidden=true;$('#qClear').hidden=false;$('#q').blur();renderFeed();focusMap(b);snapSheet('half')}
+function clearLoc(){locFilter=null;$('#q').value='';$('#qClear').hidden=true;$('#qRes').hidden=true;renderFeed();
+  if(searchMk){searchMk.g?searchMk.k.setMap(null):searchMk.k.remove();searchMk=null}}
+$('#q').addEventListener('input',()=>{if(!$('#q').value&&locFilter)clearLoc();else renderResults()});
+$('#q').addEventListener('focus',()=>{snapSheet('full');if($('#q').value&&!locFilter)renderResults()});
+$('#q').addEventListener('keydown',e=>{if(e.key==='Enter'){const f=$('#qRes').querySelector('[data-loc]');if(f)chooseLoc(f.dataset.loc)}if(e.key==='Escape'){$('#qRes').hidden=true;$('#q').blur()}});
+$('#qRes').addEventListener('click',e=>{const b=e.target.closest('[data-loc]');if(b){e.stopPropagation();chooseLoc(b.dataset.loc)}});
+$('#qClear').onclick=e=>{e.stopPropagation();clearLoc();$('#q').focus()};
+
+// ---- phone: Apple Maps-style draggable sheet (peek / half / full) ----
+let sheetState='half';
+const SH=$('#sheet');
+function detents(){const H=innerHeight-$('#dock').offsetHeight;return{peek:96,half:Math.round(H*.45),full:H-64}}
+function snapSheet(s){if(!MQ.matches){SH.style.height='';return}sheetState=s;SH.style.height=detents()[s]+'px';SH.classList.toggle('full',s==='full')}
+(()=>{let st=null;const top=$('.sheet-top');
+  top.addEventListener('pointerdown',e=>{if(!MQ.matches||e.target.closest('input,button,.results'))return;st={y:e.clientY,h:SH.offsetHeight,t:performance.now(),moved:0};SH.classList.add('dragging');top.setPointerCapture(e.pointerId)});
+  top.addEventListener('pointermove',e=>{if(!st)return;const d=detents(),dy=st.y-e.clientY;st.moved=Math.max(st.moved,Math.abs(dy));SH.style.height=Math.max(d.peek-30,Math.min(d.full,st.h+dy))+'px'});
+  const end=e=>{if(!st)return;SH.classList.remove('dragging');const d=detents(),h=SH.offsetHeight,v=(st.y-e.clientY)/Math.max(1,performance.now()-st.t),order=['peek','half','full'];
+    let s;if(st.moved<6){s=order[(order.indexOf(sheetState)+1)%3]}
+    else if(Math.abs(v)>.5){const i=order.indexOf(sheetState),cur=order.reduce((a,k)=>Math.abs(d[k]-h)<Math.abs(d[a]-h)?k:a,'peek');const ci=order.indexOf(cur);s=v>0?order[Math.min(2,Math.max(ci,i)+(d[cur]>=h?0:1))]:order[Math.max(0,Math.min(ci,i)-(d[cur]<=h?0:1))]}
+    else s=order.reduce((a,k)=>Math.abs(d[k]-h)<Math.abs(d[a]-h)?k:a,'peek');
+    st=null;snapSheet(s)};
+  top.addEventListener('pointerup',end);top.addEventListener('pointercancel',end)})();
+addEventListener('resize',()=>{snapSheet(sheetState);Object.values(RM).forEach(r=>{if(!r.g)r.m.invalidateSize()})});
+document.body.dataset.view='map';
 function renderAll(){renderFeed();renderMine();renderDash()}
 initMaps();
-renderAll();drawMini();
+renderAll();drawMini();snapSheet('half');
 </script>
 </body>
 </html>
