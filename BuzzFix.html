@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BuzzFix · Campus Maintenance Prototype</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+/* ===== Apple design tokens ===== */
+:root{
+  /* accent: the only interactive color */
+  --primary:#0066cc;--primary-focus:#0071e3;--primary-on-dark:#2997ff;
+  /* text */
+  --ink:#1d1d1f;--ink-muted80:#333333;--ink-muted48:#7a7a7a;--body-on-dark:#ffffff;--body-muted:#cccccc;
+  /* surfaces */
+  --canvas:#ffffff;--parchment:#f5f5f7;--pearl:#fafafc;--tile1:#272729;--tile2:#2a2a2c;--black:#000000;
+  /* hairlines */
+  --hairline:#e0e0e0;--divider-soft:#f0f0f0;
+  /* overlays */
+  --on-primary:#ffffff;--on-dark60:rgba(255,255,255,.6);--scrim:rgba(0,0,0,.45);
+  /* status: state only */
+  --danger:#ff3b30;--success:#34c759;--warning:#ff9500;
+  --reported:var(--danger);--assigned:var(--warning);--progress:var(--primary);--fixed:var(--success);
+  /* spacing */
+  --s-xxs:2px;--s-xs:4px;--s-sm:8px;--s-md:12px;--s-base:16px;--s-lg:20px;--s-xl:24px;--s-xxl:32px;--s-xxxl:48px;
+  /* radius */
+  --r-sm:6px;--r-md:10px;--r-lg:14px;--r-xl:20px;--r-pill:999px;
+  /* type */
+  --f-title2:40px;--f-title3:28px;--f-headline:20px;--f-body:17px;--f-callout:15px;--f-caption:13px;--f-micro:11px;
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",Inter,system-ui,sans-serif;
+  --ease:cubic-bezier(.22,1,.36,1);
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font);color:var(--ink);background:var(--canvas);font-size:var(--f-callout);font-weight:400;line-height:1.45;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;transition:transform .18s var(--ease),background-color .18s var(--ease),border-color .18s var(--ease)}
+button:active{transform:scale(.95)}
+a{color:var(--primary);text-decoration:none}a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--primary-focus);outline-offset:2px}
+
+/* ---- global nav: true black bar ---- */
+header{background:rgba(0,0,0,.86);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);color:var(--body-on-dark);padding:var(--s-sm) var(--s-xl);display:flex;align-items:center;gap:var(--s-lg);flex-wrap:wrap;position:sticky;top:0;z-index:20;min-height:52px}
+.logo{font-size:var(--f-headline);font-weight:700;letter-spacing:-.02em;line-height:1}
+.logo span:not(.proto){color:var(--primary-on-dark)}
+.proto{font-size:var(--f-micro);font-weight:400;letter-spacing:0;background:var(--tile1);color:var(--body-muted);padding:var(--s-xxs) var(--s-sm);border-radius:var(--r-pill);margin-left:var(--s-sm);vertical-align:middle}
+nav{display:flex;gap:var(--s-xs);flex-wrap:wrap}
+nav button{background:none;border:none;color:var(--body-muted);padding:var(--s-xs) var(--s-md);border-radius:var(--r-pill);font-size:var(--f-caption);font-weight:400}
+nav button:hover{color:var(--body-on-dark)}
+nav button.active{color:var(--body-on-dark);font-weight:600;background:var(--tile1)}
+/* segmented control */
+.role{margin-left:auto;display:flex;background:var(--tile1);border-radius:var(--r-pill);padding:var(--s-xxs)}
+.role button{border:none;background:none;color:var(--body-muted);padding:var(--s-xs) var(--s-md);border-radius:var(--r-pill);font-size:var(--f-caption);font-weight:600}
+.role button.on{background:var(--canvas);color:var(--ink)}
+
+main{max-width:1240px;margin:0 auto;padding:var(--s-xxl) var(--s-xl)}
+.view{display:none}.view.active{display:block;animation:fadeIn .24s var(--ease)}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+h2{font-size:var(--f-title2);font-weight:700;letter-spacing:-.025em;line-height:1.1;margin:0 0 var(--s-sm);color:var(--ink)}
+.sub{color:var(--ink-muted48);font-size:var(--f-body);margin:0 0 var(--s-xl);max-width:720px}
+.card{background:var(--canvas);border:1px solid var(--hairline);border-radius:var(--r-lg);padding:var(--s-lg)}
+
+/* ---- pill buttons ---- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--s-sm);background:var(--parchment);color:var(--ink);border:1px solid transparent;border-radius:var(--r-pill);padding:var(--s-md) var(--s-xl);font-size:var(--f-body);font-weight:400;line-height:1.2;white-space:nowrap}
+.btn:hover{background:var(--hairline);text-decoration:none}
+.btn.gold{background:var(--primary);color:var(--on-primary)}.btn.gold:hover{background:var(--primary-focus)}
+.btn.ghost{background:var(--canvas);color:var(--primary);border-color:var(--primary)}.btn.ghost:hover{background:var(--parchment)}
+.btn.sm{padding:var(--s-xs) var(--s-md);font-size:var(--f-caption)}
+.btn:disabled{opacity:.4;cursor:default;transform:none}
+
+/* ---- chips & badges ---- */
+.chip{display:inline-flex;align-items:center;gap:var(--s-xs);background:var(--parchment);border-radius:var(--r-pill);padding:var(--s-xxs) var(--s-sm);font-size:var(--f-caption);color:var(--ink-muted80);border:1px solid transparent}
+button.chip{background:var(--parchment);color:var(--ink)}button.chip:hover{background:var(--hairline)}
+button.chip.on{background:var(--primary);color:var(--on-primary)}
+.chips{display:flex;flex-wrap:wrap;gap:var(--s-xs)}
+.st{font-size:var(--f-micro);font-weight:600;padding:var(--s-xxs) var(--s-sm);border-radius:var(--r-pill);white-space:nowrap;background:var(--parchment)}
+.st-Reported{color:var(--danger)}.st-Assigned{color:#c46a00}.st-Inprogress{background:var(--primary);color:var(--on-primary)}.st-Fixed{color:#1f8a3b}
+.ada{color:var(--primary);font-weight:600}
+.safety{color:var(--danger);font-weight:600}
+
+/* ---- live map ---- */
+.mapgrid{display:grid;grid-template-columns:1fr 380px;gap:var(--s-xl)}
+@media(max-width:1000px){.mapgrid{grid-template-columns:1fr}}
+#mapCard{padding:0;overflow:hidden;position:relative;align-self:start;border-radius:var(--r-xl)}
+#map{width:100%;display:block;background:var(--parchment)}
+.bld rect{fill:var(--canvas);stroke:var(--hairline);stroke-width:1}
+.bld text{font-size:11px;fill:var(--ink-muted80);font-weight:600;pointer-events:none}
+.bld:hover rect{stroke:var(--primary);stroke-width:2}
+.pin{cursor:pointer}.pin circle{stroke:#fff;stroke-width:2}
+.pin .pulse{animation:pulse 1.8s infinite;transform-origin:center;transform-box:fill-box}
+@keyframes pulse{0%{opacity:.5;transform:scale(1)}100%{opacity:0;transform:scale(2.6)}}
+.maptools{position:absolute;left:var(--s-md);top:var(--s-md);right:60px;z-index:5;display:flex;justify-content:space-between;gap:var(--s-sm);flex-wrap:wrap;pointer-events:none}
+.maptools>*{pointer-events:auto}
+.legend{background:rgba(255,255,255,.85);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-radius:var(--r-pill);padding:var(--s-xs) var(--s-md);font-size:var(--f-caption);display:flex;gap:var(--s-md);color:var(--ink-muted80)}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:var(--s-xs);vertical-align:1px}
+.feed{display:flex;flex-direction:column;gap:var(--s-sm);max-height:640px;overflow:auto;padding-right:var(--s-xs)}
+.issue{cursor:pointer;display:flex;gap:var(--s-md);padding:var(--s-base);transition:background-color .18s var(--ease),transform .18s var(--ease)}
+.issue:hover{background:var(--pearl)}
+.issue:active{transform:scale(.99)}
+.ico{width:44px;height:44px;border-radius:var(--r-md);display:grid;place-items:center;font-size:20px;flex:none;background:var(--parchment);overflow:hidden}
+.ico img{width:100%;height:100%;object-fit:cover}
+.issue .t{font-weight:600;font-size:var(--f-callout);letter-spacing:-.01em}.issue small{color:var(--ink-muted48);font-size:var(--f-caption)}
+.vote{display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid var(--hairline);border-radius:var(--r-md);padding:var(--s-xs) var(--s-sm);background:var(--canvas);min-width:48px;color:var(--ink);align-self:flex-start}
+.vote b{font-size:var(--f-callout);font-weight:600}
+.vote.on{border-color:var(--primary);color:var(--primary)}
+.vote span{font-size:var(--f-micro);line-height:1}
+.filters{display:flex;gap:var(--s-sm);flex-wrap:wrap;margin-bottom:var(--s-md)}
+.filters select{padding:var(--s-xs) var(--s-xl) var(--s-xs) var(--s-md);border:none;border-radius:var(--r-pill);background:var(--parchment) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%237a7a7a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center;-webkit-appearance:none;appearance:none;font-size:var(--f-caption);font-weight:600;color:var(--ink);cursor:pointer}
+
+/* ---- report form ---- */
+.report{display:grid;grid-template-columns:1fr 1fr;gap:var(--s-xl)}
+@media(max-width:900px){.report{grid-template-columns:1fr}}
+label.f{display:block;font-size:var(--f-caption);font-weight:600;color:var(--ink-muted80);margin:var(--s-lg) 0 var(--s-sm)}
+.field,textarea{width:100%;border:1px solid var(--hairline);border-radius:var(--r-md);padding:var(--s-md);outline:none;background:var(--canvas);font-size:var(--f-body)}
+.field:focus,textarea:focus{border-color:var(--primary)}
+.field:focus-visible,textarea:focus-visible{outline:none}
+select.field{-webkit-appearance:none;appearance:none;background:var(--canvas) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%237a7a7a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 14px center;padding-right:var(--s-xxl)}
+textarea{min-height:96px;resize:vertical}
+::placeholder{color:var(--ink-muted48)}
+.drop{border:1px dashed var(--hairline);border-radius:var(--r-lg);height:180px;display:grid;place-items:center;text-align:center;color:var(--ink-muted48);cursor:pointer;overflow:hidden;position:relative;background:var(--parchment);transition:border-color .18s var(--ease)}
+.drop b{color:var(--primary);font-weight:600}
+.drop:hover{border-color:var(--primary)}
+.drop img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+/* dark tile */
+.ai{background:var(--tile1);color:var(--body-on-dark);border-radius:var(--r-xl);padding:var(--s-xl)}
+.ai h4{margin:0 0 var(--s-md);font-size:var(--f-caption);font-weight:600;letter-spacing:0;color:var(--body-muted)}
+.ai .row{display:flex;justify-content:space-between;padding:var(--s-sm) 0;border-bottom:1px solid rgba(255,255,255,.1)}
+.ai .row span{color:var(--body-muted)}.ai .row b{font-weight:600}
+.ai .row:last-child{border:none}
+.bar{height:4px;background:rgba(255,255,255,.15);border-radius:var(--r-pill);margin-top:var(--s-xs)}
+.bar i{display:block;height:100%;background:var(--primary-on-dark);border-radius:var(--r-pill);transition:width .24s var(--ease)}
+.dup{background:var(--parchment);border-radius:var(--r-lg);padding:var(--s-base);margin-top:var(--s-base)}
+.dup .card{border-color:transparent}
+.row2{display:flex;gap:var(--s-sm);align-items:center;flex-wrap:wrap}
+
+/* ---- dashboard ---- */
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:var(--s-md);margin-bottom:var(--s-xl)}
+@media(max-width:900px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{background:var(--parchment);border-color:transparent}
+.stat .n{font-size:var(--f-title2);font-weight:700;letter-spacing:-.03em;color:var(--ink);line-height:1}
+.stat .l{color:var(--ink-muted48);font-size:var(--f-caption);margin-top:var(--s-xs)}.stat .d{font-size:var(--f-micro);margin-top:var(--s-xs);font-weight:600}
+.dash{display:grid;grid-template-columns:1fr 360px;gap:var(--s-xl)}
+@media(max-width:1000px){.dash{grid-template-columns:1fr}}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:var(--f-micro);font-weight:600;color:var(--ink-muted48);padding:var(--s-sm);border-bottom:1px solid var(--hairline)}
+td{padding:var(--s-md) var(--s-sm);border-bottom:1px solid var(--divider-soft);vertical-align:middle}
+tr.q{transition:background-color .18s var(--ease)}
+tr.q:hover td{background:var(--pearl)}
+.score{font-weight:700;color:var(--ink);font-size:var(--f-body);letter-spacing:-.01em}
+.hbar{display:flex;align-items:center;gap:var(--s-sm);margin:var(--s-sm) 0;font-size:var(--f-caption)}
+.hbar .lab{width:130px;flex:none;color:var(--ink-muted80)}.hbar .track{flex:1;background:var(--parchment);border-radius:var(--r-pill);height:8px;overflow:hidden}
+.hbar .track i{display:block;height:100%;background:var(--ink);border-radius:var(--r-pill)}
+.hbar .v{width:28px;text-align:right;font-weight:600}
+h3{margin:0 0 var(--s-md);font-size:var(--f-callout);font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+.hot{padding:var(--s-md) 0;border-top:1px solid var(--divider-soft)}.hot:first-of-type{border:none}
+
+/* ---- sheet / drawer ---- */
+.overlay{position:fixed;inset:0;background:var(--scrim);display:none;z-index:40;animation:fadeIn .18s var(--ease)}.overlay.open{display:block}
+.drawer{position:fixed;top:0;right:0;height:100%;width:min(480px,100%);background:var(--canvas);z-index:50;transform:translateX(100%);transition:transform .24s var(--ease);overflow:auto;padding:var(--s-xxl) var(--s-xl)}
+.drawer.open{transform:none}
+.drawer h2{font-size:var(--f-title3)!important}
+.close{position:absolute;right:var(--s-base);top:var(--s-base);width:32px;height:32px;border-radius:50%;background:var(--parchment);border:none;font-size:20px;line-height:1;color:var(--ink-muted48);display:grid;place-items:center}
+.close:hover{background:var(--hairline)}
+.timeline{margin:var(--s-base) 0;padding-left:var(--s-lg);border-left:1px solid var(--hairline)}
+.timeline div{position:relative;padding:var(--s-xs) 0 var(--s-md) var(--s-sm);font-size:var(--f-callout)}
+.timeline div b{font-weight:600}
+.timeline div:before{content:"";position:absolute;left:-26px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--canvas);border:1px solid var(--hairline)}
+.timeline div.done:before{background:var(--primary);border-color:var(--primary)}
+.timeline small{color:var(--ink-muted48);display:block;font-size:var(--f-caption)}
+.photo{width:100%;height:220px;border-radius:var(--r-lg);display:grid;place-items:center;font-size:64px;background:var(--parchment);overflow:hidden;margin:var(--s-base) 0}
+.photo img{width:100%;height:100%;object-fit:cover;box-shadow:0 5px 30px 3px rgba(0,0,0,.22)}
+/* toast: dark pill, top */
+.toast{position:fixed;top:68px;left:50%;transform:translateX(-50%) translateY(-12px);opacity:0;pointer-events:none;background:var(--tile1);color:var(--on-primary);padding:var(--s-md) var(--s-lg);border-radius:var(--r-lg);z-index:80;transition:opacity .18s var(--ease),transform .22s var(--ease);max-width:92vw;font-size:var(--f-callout)}
+.toast.show{transform:translateX(-50%);opacity:1;pointer-events:auto}.toast b{color:var(--primary-on-dark);font-weight:600}
+.note{font-size:var(--f-micro);color:var(--ink-muted48);margin-top:var(--s-xxxl);padding-top:var(--s-lg);border-top:1px solid var(--divider-soft);text-align:center}
+.empty{color:var(--ink-muted48);text-align:center;padding:var(--s-xxl)}
+.real{position:absolute;inset:0;z-index:1;opacity:0;pointer-events:none;transition:opacity .4s}
+.real.ok{opacity:1;pointer-events:auto}
+.mapwrap{position:relative}
+.maptag{position:absolute;right:var(--s-sm);bottom:var(--s-sm);z-index:4;font-size:var(--f-micro);background:rgba(255,255,255,.85);padding:var(--s-xxs) var(--s-sm);border-radius:var(--r-pill);color:var(--ink-muted48)}
+.leaflet-tooltip{font:600 12px var(--font);border-radius:var(--r-sm);box-shadow:none;border:1px solid var(--hairline)}
+.leaflet-control-layers,.leaflet-bar{box-shadow:none!important;border:1px solid var(--hairline)!important;border-radius:var(--r-md)!important;overflow:hidden}
+#v-mine .feed>.card{padding:var(--s-base)}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">BuzzFix<span>.</span><span class="proto">Prototype · sample data</span></div>
+  <nav id="nav">
+    <button data-v="map" class="active">Live map</button>
+    <button data-v="report">+ Report an issue</button>
+    <button data-v="mine">My reports</button>
+    <button data-v="dash" id="navDash" style="display:none">Facilities dashboard</button>
+  </nav>
+  <div class="role" id="role"><button data-r="student" class="on">Student</button><button data-r="facilities">Facilities staff</button></div>
+</header>
+
+<main>
+<section class="view active" id="v-map">
+  <h2>What's broken on campus right now</h2>
+  <p class="sub">Every open issue, live. Upvote the ones affecting you; the most-felt problems rise to the top of the facilities queue.</p>
+  <div class="mapgrid">
+    <div class="card" id="mapCard">
+      <div class="maptools">
+        <div class="legend"><span><i style="background:var(--reported)"></i>Reported</span><span><i style="background:var(--assigned)"></i>Assigned</span><span><i style="background:var(--progress)"></i>In progress</span><span><i style="background:var(--fixed)"></i>Fixed</span></div>
+        <button class="btn gold sm" onclick="show('report')">+ Report here</button>
+      </div>
+      <div class="mapwrap"><svg id="map" viewBox="0 0 900 640"></svg><div class="real" id="realMap"></div><div class="maptag" id="mapTag">Drawn map · live map loads when online</div></div>
+    </div>
+    <div>
+      <div class="filters">
+        <select id="fCat"><option value="">All categories</option></select>
+        <select id="fStatus"><option value="open">Open issues</option><option value="">All incl. fixed</option><option value="Fixed">Fixed</option></select>
+        <select id="fSort"><option value="votes">Most upvoted</option><option value="new">Newest</option></select>
+      </div>
+      <div class="feed" id="feed"></div>
+    </div>
+  </div>
+</section>
+
+<section class="view" id="v-report">
+  <h2>Report an issue in 10 seconds</h2>
+  <p class="sub">Snap a photo, add a few words. BuzzFix figures out the category, urgency and the right crew, and checks if someone already reported it.</p>
+  <div class="report">
+    <div class="card">
+      <label class="f" style="margin-top:0">1 · Photo</label>
+      <label class="drop" id="drop"><input type="file" accept="image/*" id="photo" hidden><div id="dropTxt">📷<br><b>Tap to take or upload a photo</b><br><small>optional, but helps crews arrive with the right parts</small></div></label>
+      <label class="f">2 · What's wrong?</label>
+      <textarea id="desc" placeholder="e.g. Elevator stuck on 2nd floor, doors won't open"></textarea>
+      <div class="chips" style="margin-top:8px" id="examples"></div>
+      <label class="f">3 · Where?</label>
+      <div class="row2"><select class="field" id="bld" style="flex:1"></select><input class="field" id="room" placeholder="Floor / room (optional)" style="flex:1"></div>
+      <div class="row2" style="margin-top:10px"><button class="btn ghost sm" id="locBtn" type="button">📍 Use my live location</button><small style="color:var(--ink-muted48)" id="locMsg">or tap the map to pin the exact spot</small></div>
+      <div class="mapwrap" style="margin-top:8px;border-radius:14px;border:1px solid var(--hairline);overflow:hidden;aspect-ratio:900/640"><svg id="miniMap" viewBox="0 0 900 640" style="width:100%;height:100%;cursor:crosshair;display:block"></svg><div class="real" id="reportReal"></div></div>
+      <div style="margin-top:18px"><button class="btn gold" id="submit" style="width:100%" disabled>Submit report</button></div>
+    </div>
+    <div>
+      <div class="ai" id="ai"><h4>⚡ Auto-triage (simulated AI)</h4><div style="color:var(--body-muted)">Start typing a description and BuzzFix will classify it instantly.</div></div>
+      <div id="dupBox"></div>
+    </div>
+  </div>
+</section>
+
+<section class="view" id="v-mine">
+  <h2>My reports</h2>
+  <p class="sub">No more reporting into a void. Follow every report until it's fixed, and get notified when it is.</p>
+  <div class="feed" id="mine" style="max-height:none"></div>
+</section>
+
+<section class="view" id="v-dash">
+  <h2>Facilities dashboard</h2>
+  <p class="sub">One de-duplicated queue, ranked by severity, how many people are affected, accessibility impact and age. Tickets can sync to the existing work-order system.</p>
+  <div class="stats" id="stats"></div>
+  <div class="dash">
+    <div>
+    <div class="card" style="padding:0;overflow:hidden;margin-bottom:18px">
+      <div style="padding:14px 16px 8px;display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0">Live issue map</h3><small style="color:var(--ink-muted48)">Click a pin to open the issue</small></div>
+      <div class="mapwrap" style="height:420px;overflow:hidden"><svg id="dashSvg" viewBox="0 0 900 640" style="width:100%;height:100%;display:block;background:var(--parchment)" preserveAspectRatio="xMidYMid meet"></svg><div class="real" id="dashReal"></div><div class="maptag" id="dashTag">Drawn map · live map loads when online</div></div>
+    </div>
+    <div class="card" style="overflow:auto">
+      <h3>Priority queue</h3>
+      <table><thead><tr><th>Score</th><th>Issue</th><th>Location</th><th>👍</th><th>Age</th><th>Status</th><th>Crew</th><th></th></tr></thead><tbody id="queue"></tbody></table>
+    </div>
+    </div>
+    <div>
+      <div class="card"><h3>Open issues by building</h3><div id="byBld"></div></div>
+      <div class="card" style="margin-top:16px"><h3>🔁 Recurring hotspots</h3><div id="hot"></div><small style="color:var(--ink-muted48)">Same problem, same place, 2+ times in 90 days. Candidates for replacement, not another patch.</small></div>
+      <div class="card" style="margin-top:16px"><h3>Avg. days to fix by category</h3><div id="ttf"></div></div>
+    </div>
+  </div>
+</section>
+<p class="note">BuzzFix prototype. Building names are real Georgia Tech locations (map simplified); all reports are fictional sample data; "AI" triage is simulated with keyword rules. Nothing is sent anywhere, and changes reset on reload.</p>
+</main>
+
+<div class="overlay" id="overlay"></div>
+<aside class="drawer" id="drawer"><button class="close" onclick="closeDrawer()">&times;</button><div id="dBody"></div></aside>
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== GOOGLE MAPS =====
+// Paste your Google Maps JavaScript API browser key between the quotes (it starts with "AIza").
+// Leave it empty to use the free OpenStreetMap/Esri backup map.
+const GOOGLE_MAPS_API_KEY='AIzaSyA34YYSo3XxiBegv5Dq0J4WeaM4lIoA7uI';
+// ========================
+// Simplified Georgia Tech campus. Positions are approximate (lat/lng projected onto the drawing).
+const LNG0=-84.4065,LAT0=33.7822,KX=42857,KY=51613;
+const px=(lat,lng)=>({x:(lng-LNG0)*KX,y:(LAT0-lat)*KY});
+const ll=(x,y)=>({lat:LAT0-y/KY,lng:x/KX+LNG0});
+const gmaps=(i)=>`https://www.google.com/maps/search/?api=1&query=${i.lat.toFixed(6)},${i.lng.toFixed(6)}`;
+const gdir=(i)=>`https://www.google.com/maps/dir/?api=1&destination=${i.lat.toFixed(6)},${i.lng.toFixed(6)}&travelmode=walking`;
+const amaps=(i)=>`https://maps.apple.com/?ll=${i.lat.toFixed(6)},${i.lng.toFixed(6)}&q=${encodeURIComponent(i.title||'Reported issue')}&z=19&t=k`;
+const REAL={tt:[33.7725,-84.3947],dodd:[33.7725,-84.3928],crc:[33.7756,-84.4035],ic:[33.7755,-84.4012]};
+const BGRP={"culc": "Academic & research", "stu": "Dining & student life", "tt": "Administration & services", "vl": "Academic & research", "klaus": "Academic & research", "howey": "Academic & research", "ic": "Academic & research", "crc": "Athletics & recreation", "wv": "Dining & student life", "dodd": "Athletics & recreation", "naa": "Residence halls", "scheller": "Academic & research"};
+const BEXTRA=[["architecture-east", "Architecture East", 33.77602, -84.39538, "Academic & research"], ["architecture-west", "Architecture West", 33.77605, -84.39588, "Academic & research"], ["baker-building-gtri", "Baker Building (GTRI)", 33.77998, -84.39952, "Academic & research"], ["boggs-chemistry-building", "Boggs Chemistry Building", 33.77541, -84.39969, "Academic & research"], ["bunger-henry-building", "Bunger-Henry Building", 33.77557, -84.39839, "Academic & research"], ["caddell-building", "Caddell Building", 33.77663, -84.39683, "Academic & research"], ["callaway-manufacturing-research-center-marc", "Callaway Manufacturing Research Center (MARC)", 33.77763, -84.40133, "Academic & research"], ["carbon-neutral-energy-solutions-lab", "Carbon Neutral Energy Solutions Lab", 33.77094, -84.40192, "Academic & research"], ["carnegie-building", "Carnegie Building", 33.77248, -84.39428, "Academic & research"], ["centennial-research-building", "Centennial Research Building", 33.781, -84.40036, "Academic & research"], ["cherry-emerson-building", "Cherry Emerson Building", 33.77793, -84.39721, "Academic & research"], ["coda", "Coda", 33.7755, -84.38789, "Academic & research"], ["college-of-computing-building", "College of Computing Building", 33.77743, -84.39743, "Academic & research"], ["coon-building", "Coon Building", 33.77286, -84.39585, "Academic & research"], ["couch-building-school-of-music", "Couch Building (School of Music)", 33.77837, -84.40452, "Academic & research"], ["create-x-woody-s", "CREATE-X (Woody's)", 33.77916, -84.40693, "Academic & research"], ["crosland-tower-library", "Crosland Tower (Library)", 33.7742, -84.39519, "Academic & research"], ["d-m-smith-building", "D. M. Smith Building", 33.77365, -84.39515, "Academic & research"], ["daniel-laboratory", "Daniel Laboratory", 33.77367, -84.39399, "Academic & research"], ["engineering-science-mechanics-es-m", "Engineering Science & Mechanics (ES&M)", 33.77206, -84.3958, "Academic & research"], ["exhibition-hall", "Exhibition Hall", 33.77463, -84.40171, "Academic & research"], ["ford-environmental-science-technology-es-t", "Ford Environmental Science & Technology (ES&T)", 33.77882, -84.39592, "Academic & research"], ["french-building", "French Building", 33.773, -84.39462, "Academic & research"], ["global-learning-center", "Global Learning Center", 33.77632, -84.39003, "Academic & research"], ["groseclose-building-isye", "Groseclose Building (ISyE)", 33.77573, -84.40176, "Academic & research"], ["gtri-north-building", "GTRI North Building", 33.78103, -84.40148, "Academic & research"], ["gtri-south-building", "GTRI South Building", 33.78038, -84.40144, "Academic & research"], ["guggenheim-building-aerospace", "Guggenheim Building (Aerospace)", 33.77158, -84.39576, "Academic & research"], ["hinman-research-building", "Hinman Research Building", 33.77488, -84.39494, "Academic & research"], ["holland-building", "Holland Building", 33.7733, -84.39459, "Academic & research"], ["hopkins-building-brain-imaging", "Hopkins Building (Brain Imaging)", 33.77535, -84.40597, "Academic & research"], ["institute-of-paper-science-technology-ipst", "Institute of Paper Science & Technology (IPST)", 33.781, -84.40467, "Academic & research"], ["kendeda-building", "Kendeda Building", 33.77879, -84.3995, "Academic & research"], ["knight-building-aerospace", "Knight Building (Aerospace)", 33.77193, -84.39602, "Academic & research"], ["krone-engineered-biosystems-building-ebb", "Krone Engineered Biosystems Building (EBB)", 33.78086, -84.39843, "Academic & research"], ["lamar-allen-sustainable-education-building", "Lamar Allen Sustainable Education Building", 33.77616, -84.39877, "Academic & research"], ["love-manufacturing-building", "Love Manufacturing Building", 33.7766, -84.40167, "Academic & research"], ["manufacturing-related-disciplines-complex-mrdc", "Manufacturing Related Disciplines Complex (MRDC)", 33.77697, -84.40054, "Academic & research"], ["marcus-nanotechnology-building", "Marcus Nanotechnology Building", 33.77885, -84.39853, "Academic & research"], ["mason-building", "Mason Building", 33.77659, -84.39866, "Academic & research"], ["old-civil-engineering-building", "Old Civil Engineering Building", 33.77419, -84.39462, "Academic & research"], ["petit-biotechnology-building-ibb", "Petit Biotechnology Building (IBB)", 33.77898, -84.39721, "Academic & research"], ["pettit-microelectronics-center-mirc", "Pettit Microelectronics Center (MiRC)", 33.77667, -84.39734, "Academic & research"], ["price-gilbert-library", "Price Gilbert Library", 33.77428, -84.39564, "Academic & research"], ["rich-computer-center", "Rich Computer Center", 33.77525, -84.39503, "Academic & research"], ["robinson-building", "Robinson Building", 33.77985, -84.39664, "Academic & research"], ["savant-building", "Savant Building", 33.77211, -84.39524, "Academic & research"], ["skiles-building", "Skiles Building", 33.77358, -84.39618, "Academic & research"], ["swann-building", "Swann Building", 33.77175, -84.39527, "Academic & research"], ["tech-square-research-building-tsrb", "Tech Square Research Building (TSRB)", 33.77736, -84.39006, "Academic & research"], ["weber-space-science-technology-i", "Weber Space Science & Technology I", 33.77296, -84.3967, "Academic & research"], ["weber-space-science-technology-iii", "Weber Space Science & Technology III", 33.77268, -84.39641, "Academic & research"], ["whitaker-building", "Whitaker Building", 33.77842, -84.3969, "Academic & research"], ["armstrong-hall", "Armstrong Hall", 33.77916, -84.40361, "Residence halls"], ["brown-hall", "Brown Hall", 33.77164, -84.39184, "Residence halls"], ["caldwell-hall", "Caldwell Hall", 33.77892, -84.40444, "Residence halls"], ["center-street-apartments", "Center Street Apartments", 33.78031, -84.40237, "Residence halls"], ["cloudman-hall", "Cloudman Hall", 33.77286, -84.3917, "Residence halls"], ["crecine-apartments", "Crecine Apartments", 33.78, -84.40354, "Residence halls"], ["eighth-street-apartments", "Eighth Street Apartments", 33.78011, -84.40508, "Residence halls"], ["field-hall", "Field Hall", 33.77417, -84.39164, "Residence halls"], ["fitten-hall", "Fitten Hall", 33.77825, -84.4037, "Residence halls"], ["folk-hall", "Folk Hall", 33.77892, -84.40482, "Residence halls"], ["fourth-street-apartments", "Fourth Street Apartments", 33.77528, -84.39159, "Residence halls"], ["freeman-hall", "Freeman Hall", 33.77758, -84.40391, "Residence halls"], ["fulmer-hall", "Fulmer Hall", 33.77863, -84.40387, "Residence halls"], ["glenn-hall", "Glenn Hall", 33.77344, -84.3916, "Residence halls"], ["graduate-living-center", "Graduate Living Center", 33.78192, -84.39656, "Residence halls"], ["hanson-hall", "Hanson Hall", 33.77419, -84.39091, "Residence halls"], ["harris-hall", "Harris Hall", 33.77207, -84.39173, "Residence halls"], ["harrison-hall", "Harrison Hall", 33.77276, -84.39094, "Residence halls"], ["hayes-and-gray-houses", "Hayes and Gray Houses", 33.77489, -84.39159, "Residence halls"], ["hefner-hall", "Hefner Hall", 33.77915, -84.40395, "Residence halls"], ["hopkins-hall", "Hopkins Hall", 33.77408, -84.39124, "Residence halls"], ["howell-hall", "Howell Hall", 33.77214, -84.39093, "Residence halls"], ["matheson-hall", "Matheson Hall", 33.77453, -84.39151, "Residence halls"], ["maulding-hall", "Maulding Hall", 33.77702, -84.4056, "Residence halls"], ["montag-hall", "Montag Hall", 33.77783, -84.4039, "Residence halls"], ["nelson-shell-hall", "Nelson-Shell Hall", 33.7782, -84.40554, "Residence halls"], ["perry-hall", "Perry Hall", 33.77449, -84.39115, "Residence halls"], ["smith-hall", "Smith Hall", 33.77174, -84.39122, "Residence halls"], ["tenth-and-home-apartments", "Tenth and Home Apartments", 33.7823, -84.3958, "Residence halls"], ["towers-hall", "Towers Hall", 33.77344, -84.391, "Residence halls"], ["woodruff-hall-north", "Woodruff Hall North", 33.77937, -84.40654, "Residence halls"], ["woodruff-hall-south", "Woodruff Hall South", 33.77886, -84.40653, "Residence halls"], ["zbar-hall", "Zbar Hall", 33.77754, -84.40481, "Residence halls"], ["alumni-house", "Alumni House", 33.77106, -84.39356, "Dining & student life"], ["barnes-noble-bookstore", "Barnes & Noble Bookstore", 33.77635, -84.3884, "Dining & student life"], ["brittain-dining-hall", "Brittain Dining Hall", 33.77246, -84.39131, "Dining & student life"], ["eco-commons", "Eco-Commons", 33.77905, -84.40035, "Dining & student life"], ["ferst-center-for-the-arts", "Ferst Center for the Arts", 33.77508, -84.39925, "Dining & student life"], ["gt-hotel-conference-center", "GT Hotel & Conference Center", 33.77639, -84.38933, "Dining & student life"], ["north-avenue-dining-hall", "North Avenue Dining Hall", 33.77107, -84.39125, "Dining & student life"], ["smithgall-student-services-flag-building", "Smithgall Student Services (Flag Building)", 33.77438, -84.39951, "Dining & student life"], ["stamps-health-services", "Stamps Health Services", 33.77481, -84.40305, "Dining & student life"], ["student-success-center", "Student Success Center", 33.77242, -84.39394, "Dining & student life"], ["tech-tower-lawn", "Tech Tower Lawn", 33.77181, -84.39443, "Dining & student life"], ["veterans-resource-center", "Veterans Resource Center", 33.77948, -84.39624, "Dining & student life"], ["wardlaw-center", "Wardlaw Center", 33.77164, -84.39283, "Dining & student life"], ["brock-football-practice-facility", "Brock Football Practice Facility", 33.77893, -84.39485, "Athletics & recreation"], ["griffin-track", "Griffin Track", 33.77977, -84.39476, "Athletics & recreation"], ["ken-byers-tennis-complex", "Ken Byers Tennis Complex", 33.78055, -84.39423, "Athletics & recreation"], ["mccamish-pavilion", "McCamish Pavilion", 33.78069, -84.39277, "Athletics & recreation"], ["mewborn-field-softball", "Mewborn Field (Softball)", 33.77931, -84.39327, "Athletics & recreation"], ["o-keefe-gymnasium", "O'Keefe Gymnasium", 33.77932, -84.3916, "Athletics & recreation"], ["roe-stamps-field", "Roe Stamps Field", 33.77663, -84.40363, "Athletics & recreation"], ["rose-bowl-field", "Rose Bowl Field", 33.77891, -84.39408, "Athletics & recreation"], ["russ-chandler-stadium", "Russ Chandler Stadium", 33.77778, -84.39499, "Athletics & recreation"], ["zelnak-basketball-practice-facility", "Zelnak Basketball Practice Facility", 33.77995, -84.3923, "Athletics & recreation"], ["bradley-building", "Bradley Building", 33.77261, -84.3945, "Administration & services"], ["business-services-building", "Business Services Building", 33.77284, -84.4015, "Administration & services"], ["chapin-building", "Chapin Building", 33.77333, -84.39516, "Administration & services"], ["environmental-health-safety", "Environmental Health & Safety", 33.7744, -84.40469, "Administration & services"], ["georgia-tech-police", "Georgia Tech Police", 33.78124, -84.40344, "Administration & services"], ["gt-research-corporation", "GT Research Corporation", 33.78167, -84.40397, "Administration & services"], ["hall-building-navy-rotc", "Hall Building (Navy ROTC)", 33.77417, -84.3941, "Administration & services"], ["human-resources-building", "Human Resources Building", 33.77337, -84.40264, "Administration & services"], ["landon-learning-center", "Landon Learning Center", 33.78241, -84.40029, "Administration & services"], ["luck-facilities-building", "Luck Facilities Building", 33.77998, -84.39284, "Administration & services"], ["lyman-hall-bursar", "Lyman Hall (Bursar)", 33.77296, -84.39414, "Administration & services"], ["o-keefe-main-building", "O'Keefe Main Building", 33.77879, -84.39214, "Administration & services"], ["president-s-house", "President's House", 33.78094, -84.39573, "Administration & services"], ["burge-parking-deck", "Burge Parking Deck", 33.77098, -84.39389, "Parking decks"], ["crc-parking-deck", "CRC Parking Deck", 33.77624, -84.40394, "Parking decks"], ["curran-street-parking-deck", "Curran Street Parking Deck", 33.7794, -84.40553, "Parking decks"], ["dalney-street-parking-deck", "Dalney Street Parking Deck", 33.77999, -84.40053, "Parking decks"], ["family-housing-parking-deck", "Family Housing Parking Deck", 33.78222, -84.39498, "Parking decks"], ["klaus-parking-deck", "Klaus Parking Deck", 33.77705, -84.39606, "Parking decks"], ["north-avenue-apartments-north-deck", "North Avenue Apartments North Deck", 33.77072, -84.39142, "Parking decks"], ["north-campus-parking-deck", "North Campus Parking Deck", 33.7802, -84.39831, "Parking decks"], ["peters-parking-deck", "Peters Parking Deck", 33.77493, -84.39355, "Parking decks"], ["student-center-parking-deck", "Student Center Parking Deck", 33.77421, -84.40069, "Parking decks"], ["tech-square-parking-deck", "Tech Square Parking Deck", 33.77558, -84.38963, "Parking decks"]];
+const BLD=[
+ ['culc','Clough Commons',33.7747,-84.3961],
+ ['stu','John Lewis Student Center',33.7741,-84.3990],
+ ['tt','Tech Tower',33.7722,-84.3958],
+ ['vl','Van Leer',33.7762,-84.3971],
+ ['klaus','Klaus Computing',33.7773,-84.3961],
+ ['howey','Howey Physics',33.7776,-84.3992],
+ ['ic','Instructional Center',33.7752,-84.4012],
+ ['crc','Campus Rec Center',33.7766,-84.4042],
+ ['wv','West Village',33.7797,-84.4045],
+ ['dodd','Bobby Dodd Stadium',33.7726,-84.3920],
+ ['naa','North Ave Apartments',33.7705,-84.3912],
+ ['scheller','Scheller (Tech Square)',33.7765,-84.3876],
+].map(([id,name,lat,lng])=>{const real=REAL[id]||[lat,lng];const c=px(lat,lng),w=Math.max(70,name.length*6.3+16),h=id==='dodd'?70:44;return{id,name,x:c.x-w/2,y:c.y-h/2,w,h,lat:real[0],lng:real[1],grp:BGRP[id]}});
+// More campus buildings (coordinates from OpenStreetMap). Listed in the dropdown and on the live maps; not drawn on the simplified map.
+BLD.push(...BEXTRA.map(([id,name,lat,lng,grp])=>{const c=px(lat,lng);return{id,name,x:c.x-10,y:c.y-10,w:20,h:20,lat,lng,grp,extra:true}}));
+const B=Object.fromEntries(BLD.map(b=>[b.id,b]));
+const CATS={
+ 'Plumbing':{ico:'🚰',sev:2,crew:'Plumbing',kw:['leak','water','toilet','sink','drip','flood','clog','faucet','pipe','shower','fountain']},
+ 'Electrical':{ico:'💡',sev:2,crew:'Electrical',kw:['light','outlet','power','flicker','electric','plug','charging','bulb','spark']},
+ 'HVAC':{ico:'🌡️',sev:1.5,crew:'HVAC',kw:['hot','cold','ac','a/c','heat','heater','vent','air','temperature','freezing','humid','thermostat']},
+ 'Accessibility':{ico:'♿',sev:3,crew:'Elevator & Access',kw:['elevator','ramp','wheelchair','door opener','automatic door','accessible','ada','lift','button']},
+ 'Safety':{ico:'⚠️',sev:3,crew:'Safety Response',kw:['glass','exposed','wire','trip','smoke','unsafe','hazard','broken step','railing','sharp','lock','alarm']},
+ 'Cleanliness':{ico:'🧹',sev:1,crew:'Custodial',kw:['trash','spill','dirty','smell','mess','overflow','stain','pest','roach','mold']},
+ 'Furniture & Fixtures':{ico:'🪑',sev:1,crew:'Carpentry',kw:['chair','desk','table','door','window','blind','whiteboard','projector','broken','cracked','handle']},
+ 'IT / Wi-Fi':{ico:'📶',sev:1.2,crew:'IT Support',kw:['wifi','wi-fi','internet','network','printer','screen','display']},
+};
+const STAGES=['Reported','Assigned','In progress','Fixed'];
+const day=864e5,NOW=Date.now();
+let seq=100;
+const ISSUES_SEED=0;
+const issues=[
+ mk('Elevator out of service, 3rd floor',          'Accessibility','culc','Elevator B',               'In progress',4,38),
+ mk('Water fountain leaking onto floor',           'Plumbing','stu','1st floor near food court',   'Reported',1,12),
+ mk('Lecture hall AC not working, 88°F inside',    'HVAC','ic','Room 101',                        'Assigned',2,47),
+ mk('Flickering lights in study rooms',            'Electrical','culc','2nd floor study rooms',     'Reported',3,9),
+ mk('Automatic door opener broken at main entrance','Accessibility','howey','Main entrance',         'Reported',2,15),
+ mk('Shower drain clogged',                        'Plumbing','naa','East tower, 2nd floor bath',   'Assigned',5,6),
+ mk('Broken glass on stairwell landing',           'Safety','dodd','Section 104 stairwell',           'Reported',0.2,4),
+ mk('Outlets dead along window seats',             'Electrical','stu','2nd floor lounge',          'Reported',6,21),
+ mk('Trash overflowing outside entrance',          'Cleanliness','wv','Dining hall entrance',           'Assigned',1,7),
+ mk('Wi-Fi drops constantly in rooms',             'IT / Wi-Fi','wv','Floors 3–5',                'In progress',7,33),
+ mk('Treadmill room freezing cold',                'HVAC','crc','Cardio room',                     'Reported',2,5),
+ mk('Projector won\'t turn on',                    'Furniture & Fixtures','scheller','Room 100',        'Reported',1,3),
+ mk('Ceiling leak above lab bench',                'Plumbing','vl','Lab C-241',                    'Assigned',3,8),
+ mk('Heat not working in dorm rooms',              'HVAC','naa','4th floor east wing',             'Fixed',20,26,4),
+ mk('Elevator stuck between floors',               'Accessibility','culc','Elevator B',             'Fixed',45,30,2),
+ mk('Flickering lights in study rooms',            'Electrical','culc','2nd floor study rooms',     'Fixed',60,11,6),
+ mk('Shower drain clogged',                        'Plumbing','naa','East tower, 2nd floor bath',   'Fixed',40,5,3),
+ mk('AC not working in lecture hall',              'HVAC','ic','Room 101',                        'Fixed',70,40,9),
+ mk('Broken chair in study area',                     'Furniture & Fixtures','culc','3rd floor',       'Fixed',15,2,5),
+ mk('Spill in dining area',                        'Cleanliness','wv','Dining hall',                'Fixed',4,3,0.2),
+];
+function mk(title,cat,b,loc,status,ageDays,votes,fixDays){
+  const bb=B[b],id=++seq,created=NOW-ageDays*day;
+  const si=STAGES.indexOf(status);
+  const hist=[{s:'Reported',t:created}];
+  const span=fixDays?fixDays*day:(NOW-created);
+  for(let k=1;k<=si;k++)hist.push({s:STAGES[k],t:created+span*(k/(si||1))});
+  return{id,title,cat,b,loc,status,created,votes,voted:false,mine:false,photo:null,crew:si>0?CATS[cat].crew:'',hist,
+    x:bb.x+14+((id*37)%Math.max(10,bb.w-28)),y:bb.y+30+((id*53)%Math.max(4,bb.h-38))};
+}
+
+issues.forEach(i=>{const b=B[i.b];i.lat=b.lat+(((i.id*37)%9)-4)*0.00004;i.lng=b.lng+(((i.id*53)%9)-4)*0.00005;i.acc=null});
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ago=t=>{const d=(NOW-t)/day;if(d<1/24)return'just now';if(d<1)return Math.round(d*24)+'h ago';return Math.round(d)+'d ago'};
+const color=s=>({Reported:'var(--reported)',Assigned:'var(--assigned)','In progress':'var(--progress)',Fixed:'var(--fixed)'}[s]);
+const fill=s=>({Reported:'#ff3b30',Assigned:'#ff9500','In progress':'#0066cc',Fixed:'#34c759'}[s]);
+const stc=s=>'st st-'+s.replace(' ','');
+const icon=i=>i.photo?`<img src="${i.photo}" alt="">`:CATS[i.cat].ico;
+const score=i=>{if(i.status==='Fixed')return 0;const c=CATS[i.cat];return Math.round(c.sev*(1+Math.log2(1+i.votes))*10+((NOW-i.created)/day)*2+(c.sev>=3?40:0))};
+const flags=i=>(i.cat==='Accessibility'?'<span class="chip ada">♿ Accessibility</span>':'')+(i.cat==='Safety'?'<span class="chip safety">⚠️ Safety</span>':'');
+const catChip=i=>flags(i)||`<span class="chip">${CATS[i.cat].ico} ${i.cat}</span>`;
+function toast(h){const t=$('#toast');t.innerHTML=h;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),4000)}
+let role='student';
+
+function road(pts,w,label,lx,ly,rot){const d='M'+pts.map(([lat,lng])=>{const p=px(lat,lng);return p.x.toFixed(1)+' '+p.y.toFixed(1)}).join(' L');
+  return `<path d="${d}" stroke="#fff" stroke-width="${w}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`+(label?`<text x="${lx}" y="${ly}" font-size="10" fill="#7a7a7a" font-weight="600" letter-spacing=".5" ${rot?`transform="rotate(${rot} ${lx} ${ly})"`:''}>${label}</text>`:'')}
+function baseMap(){
+  const g=(lat1,lng1,lat2,lng2,lab)=>{const a=px(lat1,lng1),b=px(lat2,lng2);return`<rect x="${a.x}" y="${a.y}" width="${b.x-a.x}" height="${b.y-a.y}" rx="10" fill="#e3eedc"/>${lab?`<text x="${(a.x+b.x)/2}" y="${(a.y+b.y)/2+4}" text-anchor="middle" font-size="11" fill="#5f7a52" font-weight="600">${lab}</text>`:''}`};
+  const hw=px(33.7822,-84.3893);
+  let h=`<rect x="0" y="0" width="900" height="640" fill="#f5f5f7"/>
+  ${g(33.7800,-84.4062,33.7782,-84.4030,'')}
+  ${g(33.7752,-84.3982,33.7738,-84.3970,'')}
+  <text x="${px(33.7735,-84.3976).x}" y="${px(33.7735,-84.3976).y}" text-anchor="middle" font-size="10" fill="#5f7a52" font-weight="700">Tech Green</text>
+  ${g(33.7735,-84.4025,33.7722,-84.4005,'Burger Bowl')}
+  <rect x="${hw.x-10}" y="0" width="22" height="640" fill="#e8e8ed"/>
+  <path d="M${hw.x+1} 0 V640" stroke="#fff" stroke-width="2" stroke-dasharray="10 8"/>
+  <text x="${hw.x+5}" y="200" font-size="10" fill="#7a7a7a" font-weight="700" transform="rotate(90 ${hw.x+5} 200)">I-75/85 CONNECTOR</text>
+  ${road([[33.7713,-84.4065],[33.7713,-84.3855]],12,'NORTH AVE',20,px(33.7713,0).y+18)}
+  ${road([[33.7815,-84.4065],[33.7815,-84.3855]],12,'10TH ST',20,px(33.7815,0).y-10)}
+  ${road([[33.7766,-84.3962],[33.7766,-84.3855]],10,'5TH ST',px(0,-84.3880).x-40,px(33.7766,0).y-9)}
+  ${road([[33.7815,-84.3935],[33.7713,-84.3935]],9,'TECHWOOD DR',px(0,-84.3935).x+8,110,90)}
+  ${road([[33.7815,-84.3921],[33.7740,-84.3921]],7,'',0,0)}
+  ${road([[33.7815,-84.3966],[33.7733,-84.3966]],8,'ATLANTIC DR',px(0,-84.3966).x+8,95,90)}
+  ${road([[33.7815,-84.3984],[33.7752,-84.3984]],7,'STATE ST',px(0,-84.3984).x-6,140,-90)}
+  ${road([[33.7815,-84.4054],[33.7713,-84.4054]],9,'TECH PKWY',px(0,-84.4054).x-6,560,-90)}
+  ${road([[33.7808,-84.4045],[33.7768,-84.4028],[33.7750,-84.4006],[33.7734,-84.3988],[33.7733,-84.3960],[33.7738,-84.3935]],9,'FERST DR',px(0,-84.4017).x,px(33.7762,0).y,38)}
+  ${road([[33.7815,-84.4022],[33.7790,-84.4002],[33.7776,-84.3985]],7,'HEMPHILL AVE',px(0,-84.4030).x+40,px(33.7806,0).y,40)}`;
+  BLD.filter(b=>!b.extra).forEach(b=>{h+=`<g class="bld" data-b="${b.id}"><rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="6"/><text x="${b.x+b.w/2}" y="${b.y+15}" text-anchor="middle">${esc(b.name)}</text></g>`});
+  return h+`<text x="890" y="632" text-anchor="end" font-size="10" fill="#7a7a7a">Georgia Tech campus · simplified, not to scale</text>`;
+}
+const spot=(x,y,c)=>`<g transform="translate(${x},${y})"><circle class="pulse" r="10" fill="${c}" style="animation:pulse 1.8s infinite;transform-origin:center;transform-box:fill-box"/><circle r="10" fill="${c}" stroke="#fff" stroke-width="3"/><circle r="3" fill="#fff"/></g>`;
+// ---- real map (Leaflet + free tiles). Falls back to the drawn map if tiles can't load.
+const RM={};
+function initMaps(){
+  if(!GOOGLE_MAPS_API_KEY)return initLeaflet();
+  window.__gInit=()=>{gMake('realMap','mapTag');gMake('dashReal','dashTag');renderAll();setTimeout(refreshReal,50);if($('#v-report').classList.contains('active'))initReportMap()};
+  window.gm_authFailure=()=>{gFailed=true;resetReportMap();['realMap','dashReal'].forEach(id=>{const el=document.getElementById(id);el.innerHTML='';el.className='real';delete RM[id]});initLeaflet();renderAll();toast('Google Maps rejected the key, so the backup map is shown. Check the key and its allowed websites.')};
+  const sc=document.createElement('script');sc.async=true;sc.onerror=()=>{gFailed=true;resetReportMap();initLeaflet();renderAll()};
+  sc.src=`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GOOGLE_MAPS_API_KEY)}&callback=__gInit&loading=async`;
+  document.head.appendChild(sc);
+}
+function initLeaflet(){initReal('realMap','mapTag',[33.7758,-84.3975],16);initReal('dashReal','dashTag',[33.7752,-84.3970],16)}
+function gMake(id,tagId){
+  const el=document.getElementById(id);
+  const m=new google.maps.Map(el,{center:{lat:33.7758,lng:-84.3975},zoom:16,mapTypeControl:true,streetViewControl:false,fullscreenControl:true,clickableIcons:false,gestureHandling:'cooperative'});
+  RM[id]={g:true,m,markers:[],ok:true};el.classList.add('ok');const t=document.getElementById(tagId);if(t)t.style.display='none';
+}
+function initReal(id,tagId,center,zoom){
+  if(typeof L==='undefined')return;
+  const el=document.getElementById(id);
+  const m=L.map(el,{scrollWheelZoom:false,zoomControl:true}).setView(center,zoom);
+  const street=L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{maxZoom:20,subdomains:'abcd',attribution:'© OpenStreetMap contributors © CARTO'});
+  const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:20,attribution:'Imagery © Esri'});
+  street.addTo(m);L.control.layers({'Map':street,'Satellite':sat},null,{position:'topright'}).addTo(m);
+  const layer=L.layerGroup().addTo(m);RM[id]={m,layer,ok:false};
+  street.on('tileload',()=>{if(RM[id].ok)return;RM[id].ok=true;el.classList.add('ok');const t=document.getElementById(tagId);if(t)t.style.display='none';});
+}
+function pinsTo(id,list){const r=RM[id];if(!r)return;
+  if(r.g){r.markers.forEach(k=>k.setMap(null));r.markers=list.map(i=>{const pri=(i.cat==='Accessibility'||i.cat==='Safety')&&i.status!=='Fixed';
+    const k=new google.maps.Marker({map:r.m,position:{lat:i.lat,lng:i.lng},title:`${i.title} · ${i.votes} affected`,
+      icon:{path:google.maps.SymbolPath.CIRCLE,scale:6+Math.min(7,Math.log2(1+i.votes)*1.4),fillColor:fill(i.status),fillOpacity:.95,strokeColor:pri?'#1d1d1f':'#ffffff',strokeWeight:pri?3:2}});
+    k.addListener('click',()=>openIssue(i.id));return k});
+    if(!r.fit&&list.length){r.fit=1;gFit(r)}return}r.layer.clearLayers();if(!r.fit&&list.length){r.fit=1;r.m.fitBounds(L.latLngBounds(list.map(i=>[i.lat,i.lng])).pad(0.15))}
+  list.forEach(i=>{const pri=i.cat==='Accessibility'||i.cat==='Safety';
+    L.circleMarker([i.lat,i.lng],{radius:6+Math.min(7,Math.log2(1+i.votes)*1.4),color:pri&&i.status!=='Fixed'?'#1d1d1f':'#fff',weight:pri?3:2,fillColor:fill(i.status),fillOpacity:.95})
+     .bindTooltip(`${esc(i.title)} · ${i.votes} affected`).on('click',()=>openIssue(i.id)).addTo(r.layer)})}
+function gFit(r){if(!r.markers.length)return;const b=new google.maps.LatLngBounds();r.markers.forEach(k=>b.extend(k.getPosition()));r.m.fitBounds(b,40)}
+function refreshReal(){Object.values(RM).forEach(r=>{if(r.g)return gFit(r);r.m.invalidateSize();if(r.layer.getLayers().length){r.m.fitBounds(L.featureGroup(r.layer.getLayers()).getBounds().pad(0.15))}})}
+function drawMap(){
+  const cat=$('#fCat').value,st=$('#fStatus').value;
+  let h=baseMap();
+  issues.filter(i=>(!cat||i.cat===cat)&&(st==='open'?i.status!=='Fixed':!st||i.status===st)).forEach(i=>{
+    const r=5+Math.min(6,Math.log2(1+i.votes)*1.3),f=fill(i.status);
+    h+=`<g class="pin" data-id="${i.id}" transform="translate(${i.x},${i.y})">${(i.status==='Reported'&&(i.cat==='Safety'||i.cat==='Accessibility'))?`<circle class="pulse" r="${r}" fill="${f}"/>`:''}<circle r="${r}" fill="${f}"/><title>${esc(i.title)} (${i.votes} upvotes)</title></g>`;
+  });
+  $('#map').innerHTML=h;
+  pinsTo('realMap',issues.filter(i=>(!cat||i.cat===cat)&&(st==='open'?i.status!=='Fixed':!st||i.status===st)));
+}
+$('#map').onclick=e=>{const p=e.target.closest('.pin');if(p)return openIssue(+p.dataset.id);const b=e.target.closest('.bld');if(b){$('#bld').value=b.dataset.b;show('report');toast(`Location set to <b>${esc(B[b.dataset.b].name)}</b>`)}};
+
+function card(i){return`<div class="card issue" data-id="${i.id}"><div class="ico">${icon(i)}</div><div style="flex:1;min-width:0"><div class="t">${esc(i.title)}</div><small>${esc(B[i.b].name)} · ${esc(i.loc)} · ${ago(i.created)}</small><div class="chips" style="margin-top:6px"><span class="${stc(i.status)}">${i.status}</span>${catChip(i)}</div></div>
+ ${i.status!=='Fixed'?`<button class="vote ${i.voted?'on':''}" data-vote="${i.id}"><span>▲</span><b>${i.votes}</b></button>`:`<div class="vote"><span>✓</span><b>${i.votes}</b></div>`}</div>`}
+function renderFeed(){
+  const cat=$('#fCat').value,st=$('#fStatus').value,so=$('#fSort').value;
+  const l=issues.filter(i=>(!cat||i.cat===cat)&&(st==='open'?i.status!=='Fixed':!st||i.status===st)).sort((a,b)=>so==='votes'?b.votes-a.votes:b.created-a.created);
+  $('#feed').innerHTML=l.length?l.map(card).join(''):'<div class="card empty">Nothing here. Nice.</div>';
+  drawMap();
+}
+$('#fCat').innerHTML+=Object.keys(CATS).map(c=>`<option>${c}</option>`).join('');
+['#fCat','#fStatus','#fSort'].forEach(s=>$(s).onchange=renderFeed);
+
+function vote(id){const i=issues.find(x=>x.id===id);if(i.status==='Fixed')return;i.voted=!i.voted;i.votes+=i.voted?1:-1;renderAll();if(i.voted)toast(`Upvoted. <b>${i.votes}</b> people are affected by this.`)}
+
+function openIssue(id){
+  const i=issues.find(x=>x.id===id),si=STAGES.indexOf(i.status);
+  $('#dBody').innerHTML=`<div class="chips" style="margin-top:6px"><span class="${stc(i.status)}">${i.status}</span>${catChip(i)}</div>
+  <h2 style="font-size:28px;margin-top:12px">${esc(i.title)}</h2>
+  <div style="color:var(--ink-muted48);font-size:15px">${esc(B[i.b].name)} · ${esc(i.loc)}</div>
+  <div class="photo">${icon(i)}</div>
+  <h3>📍 Exact location${i.exact?' (pinned by reporter)':''}</h3>
+  <div class="mapwrap" style="aspect-ratio:3/2;border-radius:14px;border:1px solid var(--hairline);overflow:hidden;margin-bottom:6px"><svg viewBox="${Math.max(0,Math.min(900-300,i.x-150))} ${Math.max(0,Math.min(640-200,i.y-100))} 300 200" style="width:100%;height:100%;display:block">${baseMap()}${spot(i.x,i.y,fill(i.status))}</svg><div class="real" id="dMap"></div></div>
+  <small style="color:var(--ink-muted48)">${esc(B[i.b].name)}${i.loc&&i.loc!=='Not specified'?' · '+esc(i.loc):''} · GPS ${i.lat.toFixed(5)}, ${i.lng.toFixed(5)}${i.acc?` (±${Math.round(i.acc)} m)`:''}</small>
+  <div class="row2" style="margin-top:8px">
+    <a class="btn sm" href="${gmaps(i)}" target="_blank" rel="noopener" style="text-decoration:none">Google Maps ↗</a>
+    <a class="btn sm ghost" href="${amaps(i)}" target="_blank" rel="noopener" style="text-decoration:none">Apple Maps ↗</a>
+    <a class="btn sm gold" href="${gdir(i)}" target="_blank" rel="noopener" style="text-decoration:none">🚶 Walk me there</a>
+    <button class="btn sm ghost" data-sat="${i.id}">🛰️ Satellite view</button>
+  </div>
+  <div id="sat"></div>
+  <div class="row2" style="justify-content:space-between"><div><b style="font-size:22px">${i.votes}</b> <span style="color:var(--ink-muted48)">people affected</span></div>
+   ${i.status!=='Fixed'?`<button class="btn ${i.voted?'ghost':'gold'}" data-vote="${i.id}">${i.voted?'✓ Upvoted':'▲ This affects me too'}</button>`:''}</div>
+  <h3 style="margin-top:20px">Progress</h3>
+  <div class="timeline">${STAGES.map((s,k)=>{const hh=i.hist.find(x=>x.s===s);return`<div class="${k<=si?'done':''}"><b>${s}</b>${hh?`<small>${new Date(hh.t).toLocaleDateString(undefined,{month:'short',day:'numeric'})}${s==='Assigned'&&i.crew?' · '+esc(i.crew)+' crew':''}</small>`:'<small>pending</small>'}</div>`}).join('')}</div>
+  ${role==='facilities'&&i.status!=='Fixed'?`<button class="btn gold" style="width:100%" data-adv="${i.id}">Move to "${STAGES[si+1]}"</button>`:''}
+  ${(()=>{const past=issues.filter(x=>x!==i&&x.b===i.b&&x.cat===i.cat&&x.loc===i.loc);return past.length?`<div class="dup" style="margin-top:16px">🔁 <b>Recurring:</b> this has been reported here ${past.length} other time${past.length>1?'s':''} before. Facilities sees it flagged as a hotspot.</div>`:''})()}`;
+  $('#drawer').classList.add('open');$('#overlay').classList.add('open');
+  drawerMap(i);
+}
+// Detail-view map: Google Maps when it loaded, otherwise the Leaflet backup, otherwise the drawn map stays.
+function drawerMap(i){
+  const el=document.getElementById('dMap');if(!el)return;
+  const pos={lat:i.lat,lng:i.lng},c=fill(i.status);
+  if(Object.values(RM).some(r=>r.g)&&window.google&&google.maps){
+    const m=new google.maps.Map(el,{center:pos,zoom:19,mapTypeControl:true,streetViewControl:false,fullscreenControl:true,clickableIcons:false,gestureHandling:'cooperative'});
+    if(i.acc)new google.maps.Circle({map:m,center:pos,radius:i.acc,strokeColor:c,strokeOpacity:.5,strokeWeight:1,fillColor:c,fillOpacity:.12,clickable:false});
+    new google.maps.Marker({map:m,position:pos,title:i.title,icon:{path:google.maps.SymbolPath.CIRCLE,scale:9,fillColor:c,fillOpacity:1,strokeColor:'#ffffff',strokeWeight:3}});
+    el.classList.add('ok');return;
+  }
+  if(typeof L==='undefined')return;
+  const m=L.map(el,{scrollWheelZoom:false,zoomControl:true}).setView([i.lat,i.lng],19);
+  const t=L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{maxZoom:20,subdomains:'abcd',attribution:'© OpenStreetMap contributors © CARTO'}).addTo(m);
+  if(i.acc)L.circle([i.lat,i.lng],{radius:i.acc,color:c,weight:1,fillOpacity:.12}).addTo(m);
+  L.circleMarker([i.lat,i.lng],{radius:9,color:'#fff',weight:3,fillColor:c,fillOpacity:1}).addTo(m);
+  t.once('tileload',()=>el.classList.add('ok'));
+  setTimeout(()=>m.invalidateSize(),260);
+}
+function closeDrawer(){$('#drawer').classList.remove('open');$('#overlay').classList.remove('open')}
+$('#overlay').onclick=closeDrawer;document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer()});
+
+function advance(id){
+  const i=issues.find(x=>x.id===id),si=STAGES.indexOf(i.status);if(si>=3)return;
+  i.status=STAGES[si+1];i.hist.push({s:i.status,t:Date.now()});if(i.status==='Assigned'&&!i.crew)i.crew=CATS[i.cat].crew;
+  renderAll();if($('#drawer').classList.contains('open'))openIssue(id);
+  if(i.status==='Fixed')toast(`✅ <b>Fixed:</b> ${esc(i.title)}. ${i.votes} people notified.`);
+}
+
+let photoData=null,triage=null,pin=null;
+function nearestBld(x,y){let best=null,bd=1e9;BLD.forEach(b=>{const dx=Math.max(b.x-x,0,x-(b.x+b.w)),dy=Math.max(b.y-y,0,y-(b.y+b.h)),d=Math.hypot(dx,dy);if(d<bd){bd=d;best=b}});return{b:best,d:bd}}
+function drawMini(){let h=baseMap();if(pin)h+=spot(pin.x,pin.y,'#0066cc');$('#miniMap').innerHTML=h;syncReportPin()}
+// Report-screen map: Google Maps when the key works, Leaflet backup otherwise. Tapping it drops the pin.
+let RPT=null,gFailed=false;
+function resetReportMap(){if(RPT&&RPT.g){const el=$('#reportReal');el.innerHTML='';el.className='real';RPT=null;if($('#v-report').classList.contains('active'))setTimeout(initReportMap,0)}}
+function initReportMap(){
+  if(RPT){if(!RPT.g)RPT.m.invalidateSize();return}
+  const el=$('#reportReal'),center={lat:33.7758,lng:-84.3975};
+  const tap=(lat,lng)=>{const p=px(lat,lng);setPin(p.x,p.y,null,{lat,lng,acc:null})};
+  if(window.google&&google.maps&&!gFailed){
+    const m=new google.maps.Map(el,{center,zoom:16,mapTypeControl:true,streetViewControl:false,fullscreenControl:false,clickableIcons:false,gestureHandling:'cooperative',draggableCursor:'crosshair'});
+    m.addListener('click',e=>tap(e.latLng.lat(),e.latLng.lng()));RPT={g:true,m,mk:null};el.classList.add('ok');
+  }else if(GOOGLE_MAPS_API_KEY&&!gFailed){return /* Google still loading; __gInit retries */}
+  else if(typeof L!=='undefined'){
+    const m=L.map(el,{scrollWheelZoom:false}).setView([center.lat,center.lng],16);
+    const t=L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{maxZoom:20,subdomains:'abcd',attribution:'© OpenStreetMap contributors © CARTO'}).addTo(m);
+    m.on('click',e=>tap(e.latlng.lat,e.latlng.lng));el.style.cursor='crosshair';RPT={m,mk:null};t.once('tileload',()=>el.classList.add('ok'));
+  }else return;
+  syncReportPin();
+}
+function syncReportPin(){
+  const r=RPT;if(!r)return;
+  if(!pin){if(r.mk){r.g?r.mk.setMap(null):r.m.removeLayer(r.mk);r.mk=null}return}
+  const pos={lat:pin.lat,lng:pin.lng};
+  if(r.g){if(!r.mk)r.mk=new google.maps.Marker({map:r.m,position:pos,icon:{path:google.maps.SymbolPath.CIRCLE,scale:9,fillColor:'#0066cc',fillOpacity:1,strokeColor:'#ffffff',strokeWeight:3}});else r.mk.setPosition(pos);
+    if(r.m.getZoom()<18)r.m.setZoom(18);r.m.panTo(pos)}
+  else{if(!r.mk)r.mk=L.circleMarker([pos.lat,pos.lng],{radius:9,color:'#fff',weight:3,fillColor:'#0066cc',fillOpacity:1}).addTo(r.m);else r.mk.setLatLng([pos.lat,pos.lng]);
+    r.m.setView([pos.lat,pos.lng],Math.max(r.m.getZoom(),18))}
+}
+function setPin(x,y,msg,real){const nb=nearestBld(x,y).b,c=real||{lat:nb.lat+(nb.y+nb.h/2-y)/KY,lng:nb.lng+(x-(nb.x+nb.w/2))/KX};pin={x,y,lat:c.lat,lng:c.lng,acc:real?real.acc:null};const n=nearestBld(x,y);$('#bld').value=n.b.id;$('#locMsg').innerHTML=msg||`📍 Pinned ${n.d<1?'inside':'near'} <b>${esc(n.b.name)}</b>`;drawMini();runTriage()}
+$('#miniMap').onclick=e=>{const sv=$('#miniMap'),pt=sv.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;const p=pt.matrixTransform(sv.getScreenCTM().inverse());setPin(p.x,p.y)};
+$('#locBtn').onclick=()=>{
+  if(!navigator.geolocation){$('#locMsg').textContent='Live location isn\'t available here. Tap the map instead.';return}
+  $('#locMsg').textContent='Finding you…';
+  try{navigator.geolocation.getCurrentPosition(pos=>{const p=px(pos.coords.latitude,pos.coords.longitude);
+    if(p.x<0||p.x>900||p.y<0||p.y>640){$('#locMsg').textContent='You don\'t seem to be on campus right now. Tap the map to pin the spot.';return}
+    setPin(p.x,p.y,null,{lat:pos.coords.latitude,lng:pos.coords.longitude,acc:pos.coords.accuracy});$('#locMsg').innerHTML+=` (±${Math.round(pos.coords.accuracy)} m GPS) · <a href="${gmaps(pin)}" target="_blank" rel="noopener">check in Google Maps ↗</a>`},
+   ()=>{$('#locMsg').textContent='Location is blocked in this preview. Tap the map to pin the exact spot instead.'},{enableHighAccuracy:true,timeout:8000})}
+  catch(err){$('#locMsg').textContent='Location is blocked in this preview. Tap the map to pin the exact spot instead.'}
+};
+const EX=['Elevator stuck, doors won\'t open','Sink leaking under the counter','Room is freezing, heat not working','Broken glass near the stairs','Outlet sparked when I plugged in'];
+$('#examples').innerHTML=EX.map(e=>`<button class="chip" type="button" data-ex="${esc(e)}">${esc(e)}</button>`).join('');
+$('#examples').onclick=e=>{if(e.target.dataset.ex){$('#desc').value=e.target.dataset.ex;runTriage()}};
+$('#bld').innerHTML='<option value="">Choose a building…</option>'+['Academic & research','Residence halls','Dining & student life','Athletics & recreation','Administration & services','Parking decks'].map(g=>`<optgroup label="${g}">`+BLD.filter(b=>b.grp===g).sort((a,b)=>a.name.localeCompare(b.name)).map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('')+'</optgroup>').join('');
+$('#photo').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{photoData=r.result;$('#dropTxt').style.display='none';$('#drop').querySelectorAll('img').forEach(x=>x.remove());$('#drop').insertAdjacentHTML('beforeend',`<img src="${photoData}">`);runTriage()};r.readAsDataURL(f)};
+['#desc','#bld','#room'].forEach(s=>$(s).addEventListener('input',runTriage));$('#bld').onchange=()=>{const b=B[$('#bld').value];if(b){const x=b.x+b.w/2,y=b.y+b.h/2+6;pin={x,y,lat:b.lat,lng:b.lng,acc:null};$('#locMsg').innerHTML=`Pinned at <b>${esc(b.name)}</b>. Tap the map to be more exact.`;drawMini()}runTriage()};
+
+function classify(t){
+  t=' '+t.toLowerCase()+' ';const sc={};
+  for(const[c,v]of Object.entries(CATS))for(const k of v.kw)if(t.includes(k.length<=3?' '+k+' ':k)||t.includes(k+'s'))sc[c]=(sc[c]||0)+(k.length>5?2:1);
+  const ranked=Object.entries(sc).sort((a,b)=>b[1]-a[1]||CATS[b[0]].sev-CATS[a[0]].sev);
+  if(!ranked.length)return{cat:'Furniture & Fixtures',conf:.42};
+  const tot=ranked.reduce((a,b)=>a+b[1],0);return{cat:ranked[0][0],conf:Math.min(.97,.55+ranked[0][1]/tot*.4+(ranked[0][1]>1?.05:0))};
+}
+function runTriage(){
+  const d=$('#desc').value.trim();
+  if(d.length<4){$('#ai').innerHTML='<h4>⚡ Auto-triage (simulated AI)</h4><div style="color:var(--body-muted)">Start typing a description and BuzzFix will classify it instantly.</div>';$('#dupBox').innerHTML='';triage=null;$('#submit').disabled=true;return}
+  const c=classify(d),cc=CATS[c.cat];
+  const urg=cc.sev>=3?'High, dispatched immediately':cc.sev>=2?'Medium, within 48h':'Standard, within 5 days';
+  triage=c;
+  $('#ai').innerHTML=`<h4>⚡ Auto-triage (simulated AI)</h4>
+   <div class="row"><span>Category</span><b>${cc.ico} ${c.cat}</b></div>
+   <div class="row" style="display:block"><div style="display:flex;justify-content:space-between"><span>Confidence</span><b>${Math.round(c.conf*100)}%</b></div><div class="bar"><i style="width:${c.conf*100}%"></i></div></div>
+   <div class="row"><span>Urgency</span><b>${urg}</b></div>
+   <div class="row"><span>Routed to</span><b>${cc.crew} crew</b></div>
+   ${c.cat==='Accessibility'?'<div class="row"><span>♿ Alert</span><b>Disability services notified</b></div>':''}
+   ${photoData?'<div class="row"><span>Photo</span><b>Attached for crew</b></div>':''}`;
+  const b=$('#bld').value;$('#submit').disabled=!b;
+  const dups=b?issues.filter(i=>i.status!=='Fixed'&&i.b===b&&i.cat===c.cat):[];
+  $('#dupBox').innerHTML=dups.length?`<div class="dup"><b>👀 Already reported?</b><div style="margin:6px 0 10px;color:var(--ink-muted80)">${dups.length} open ${c.cat.toLowerCase()} issue${dups.length>1?'s':''} in ${esc(B[b].name)}. Upvoting instead of re-reporting helps crews prioritize.</div>
+   ${dups.map(i=>`<div class="card issue" data-id="${i.id}" style="margin-top:8px"><div class="ico">${icon(i)}</div><div style="flex:1"><div class="t">${esc(i.title)}</div><small>${esc(i.loc)} · ${i.votes} affected · ${i.status}</small></div><button class="btn sm gold" data-merge="${i.id}">That's it, upvote</button></div>`).join('')}</div>`:(b?'<div class="card" style="margin-top:14px;color:var(--ink-muted48)">✓ No similar open reports here. You\'re the first to flag this.</div>':'');
+}
+function resetForm(){pin=null;$('#locMsg').textContent='or tap the map to pin the exact spot';drawMini();$('#desc').value='';$('#room').value='';$('#bld').value='';photoData=null;$('#drop').querySelectorAll('img').forEach(x=>x.remove());$('#dropTxt').style.display='';$('#photo').value='';runTriage()}
+$('#submit').onclick=()=>{
+  if(!triage||!$('#bld').value)return;
+  const b=$('#bld').value,bb=B[b],d=$('#desc').value.trim();
+  const i={id:++seq,title:d.charAt(0).toUpperCase()+d.slice(1),cat:triage.cat,b,loc:$('#room').value||'Not specified',status:'Reported',created:Date.now(),votes:1,voted:true,mine:true,photo:photoData,crew:'',hist:[{s:'Reported',t:Date.now()}],
+    x:pin?pin.x:bb.x+bb.w/2,y:pin?pin.y:bb.y+bb.h/2+6,exact:!!pin,...(pin?{lat:pin.lat,lng:pin.lng,acc:pin.acc}:{lat:bb.lat,lng:bb.lng,acc:null})};
+  issues.unshift(i);resetForm();renderAll();show('mine');
+  toast(`Report sent to <b>${CATS[i.cat].crew}</b>. We'll notify you at every step.`);
+  setTimeout(()=>{if(i.status==='Reported'){advance(i.id);toast(`🔧 <b>${CATS[i.cat].crew} crew</b> assigned to your report.`)}},6000);
+};
+document.addEventListener('click',e=>{
+  const m=e.target.closest('[data-merge]');if(m){e.stopPropagation();const i=issues.find(x=>x.id==m.dataset.merge);if(!i.voted){i.voted=true;i.votes++;i.mine=true}resetForm();renderAll();show('mine');toast(`Merged with the existing report. <b>${i.votes}</b> people affected. You'll get updates.`);return}
+  const v=e.target.closest('[data-vote]');if(v){e.stopPropagation();vote(+v.dataset.vote);if($('#drawer').classList.contains('open'))openIssue(+v.dataset.vote);return}
+  const sat=e.target.closest('[data-sat]');if(sat){const i=issues.find(x=>x.id==sat.dataset.sat);$('#sat').innerHTML=`<iframe src="https://maps.google.com/maps?q=${i.lat.toFixed(6)},${i.lng.toFixed(6)}&t=k&z=19&output=embed" style="width:100%;height:240px;border:0;border-radius:10px;margin-top:10px" loading="lazy"></iframe><small style="color:var(--ink-muted48)">Google satellite view. Shows when the app is hosted or opened as a file; the Claude preview blocks embedded maps.</small>`;return}
+  const a=e.target.closest('[data-adv]');if(a){e.stopPropagation();advance(+a.dataset.adv);return}
+  if(e.target.closest('select'))return;
+  const dp=e.target.closest('#dashSvg .pin');if(dp){openIssue(+dp.dataset.id);return}
+  const c=e.target.closest('.issue[data-id],tr[data-id]');if(c)openIssue(+c.dataset.id);
+});
+
+function renderMine(){
+  const l=issues.filter(i=>i.mine);
+  $('#mine').innerHTML=l.length?l.map(i=>`<div class="card"><div class="issue" data-id="${i.id}" style="padding:0">${card(i).replace(/^<div class="card issue" data-id="\d+">/,'').replace(/<\/div>$/,'')}</div>
+   <div style="display:flex;margin-top:12px">${STAGES.map((s,k)=>`<div style="flex:1;text-align:center;font-size:11px;font-weight:${k<=STAGES.indexOf(i.status)?700:400};color:${k<=STAGES.indexOf(i.status)?'var(--ink)':'var(--ink-muted48)'}"><div style="height:4px;margin:0 2px 6px;border-radius:2px;background:${k<=STAGES.indexOf(i.status)?color(i.status):'var(--hairline)'}"></div>${s}</div>`).join('')}</div></div>`).join('')
+   :'<div class="card empty">You haven\'t reported or upvoted anything yet. <a href="#" onclick="show(\'report\');return false">Report an issue</a> or upvote one on the live map.</div>';
+}
+
+function renderDash(){
+  const open=issues.filter(i=>i.status!=='Fixed'),fixed=issues.filter(i=>i.status==='Fixed');
+  const ttf=i=>{const f=i.hist.find(h=>h.s==='Fixed');return f?(f.t-i.created)/day:null};
+  const avg=a=>a.length?(a.reduce((x,y)=>x+y,0)/a.length):0;
+  const avgFix=avg(fixed.map(ttf).filter(x=>x!==null));
+  const dupesMerged=issues.reduce((a,i)=>a+Math.max(0,i.votes-1),0);
+  $('#stats').innerHTML=[
+   [open.length,'Open issues',''],[open.filter(i=>i.cat==='Accessibility'||i.cat==='Safety').length,'Accessibility / safety open','<span style="color:var(--danger)">Top of queue</span>'],
+   [avgFix.toFixed(1),'Avg. days to fix',''],[dupesMerged,'Duplicate reports avoided','<span style="color:#1f8a3b">Upvotes instead of re-reports</span>'],
+   [open.reduce((a,i)=>a+i.votes,0),'People currently affected','']
+  ].map(([n,l,d])=>`<div class="card stat"><div class="n">${n}</div><div class="l">${l}</div>${d?`<div class="d">${d}</div>`:''}</div>`).join('');
+  let dh=baseMap();open.forEach(i=>{const r=6+Math.min(7,Math.log2(1+i.votes)*1.4);dh+=`<g class="pin" data-id="${i.id}" transform="translate(${i.x},${i.y})"><circle r="${r}" fill="${fill(i.status)}"/><title>${esc(i.title)}</title></g>`});
+  $('#dashSvg').innerHTML=dh;pinsTo('dashReal',open);
+  const q=open.slice().sort((a,b)=>score(b)-score(a));
+  $('#queue').innerHTML=q.map(i=>`<tr class="q" data-id="${i.id}" style="cursor:pointer"><td class="score">${score(i)}</td><td><div style="display:flex;gap:8px;align-items:center"><span>${CATS[i.cat].ico}</span><div><b>${esc(i.title)}</b><div class="chips" style="margin-top:3px">${flags(i)}</div></div></div></td><td>${esc(B[i.b].name)}<br><small style="color:var(--ink-muted48)">${esc(i.loc)}</small><br><a href="${gmaps(i)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:12px;color:var(--primary)">📍 Open in Maps ↗</a></td><td>${i.votes}</td><td>${ago(i.created)}</td><td><span class="${stc(i.status)}">${i.status}</span></td><td><small>${esc(i.crew||'Unassigned')}</small></td><td><button class="btn sm" data-adv="${i.id}">${i.status==='Reported'?'Assign':i.status==='Assigned'?'Start':'Mark fixed'}</button></td></tr>`).join('')||'<tr><td colspan="8" class="empty">Queue is clear 🎉</td></tr>';
+  const bc={};open.forEach(i=>bc[i.b]=(bc[i.b]||0)+1);const mx=Math.max(1,...Object.values(bc));
+  $('#byBld').innerHTML=Object.entries(bc).sort((a,b)=>b[1]-a[1]).map(([b,n])=>`<div class="hbar"><span class="lab">${esc(B[b].name)}</span><span class="track"><i style="width:${n/mx*100}%"></i></span><span class="v">${n}</span></div>`).join('');
+  const groups={};issues.forEach(i=>{const k=i.b+'|'+i.cat+'|'+i.loc;(groups[k]=groups[k]||[]).push(i)});
+  const hots=Object.values(groups).filter(g=>g.length>=2&&g.some(i=>NOW-i.created<90*day)).sort((a,b)=>b.length-a.length);
+  $('#hot').innerHTML=hots.map(g=>`<div class="hot"><b>${CATS[g[0].cat].ico} ${esc(g[0].cat)}</b>: ${esc(B[g[0].b].name)}, ${esc(g[0].loc)}<br><small style="color:var(--ink-muted48)">${g.length} reports · ${g.filter(i=>i.status!=='Fixed').length?'currently open again':'all fixed for now'}</small></div>`).join('')||'<small>None yet.</small>';
+  const bycat={};fixed.forEach(i=>{const t=ttf(i);if(t!==null)(bycat[i.cat]=bycat[i.cat]||[]).push(t)});
+  const mt=Math.max(1,...Object.values(bycat).map(avg));
+  $('#ttf').innerHTML=Object.entries(bycat).sort((a,b)=>avg(b[1])-avg(a[1])).map(([c,a])=>`<div class="hbar"><span class="lab">${CATS[c].ico} ${esc(c)}</span><span class="track"><i style="width:${avg(a)/mt*100}%;background:var(--primary)"></i></span><span class="v">${avg(a).toFixed(1)}</span></div>`).join('');
+}
+
+function show(v){if(v==='report')setTimeout(initReportMap,30);document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.id==='v-'+v));document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('active',b.dataset.v===v));closeDrawer();window.scrollTo(0,0);setTimeout(refreshReal,30)}
+$('#nav').onclick=e=>{const b=e.target.closest('button');if(b)show(b.dataset.v)};
+$('#role').onclick=e=>{const r=e.target.dataset.r;if(!r)return;role=r;document.querySelectorAll('#role button').forEach(b=>b.classList.toggle('on',b.dataset.r===r));
+  $('#navDash').style.display=r==='facilities'?'':'none';show(r==='facilities'?'dash':'map');toast(r==='facilities'?'Switched to <b>Facilities staff</b> view':'Switched to <b>Student</b> view')};
+function renderAll(){renderFeed();renderMine();renderDash()}
+initMaps();
+renderAll();drawMini();
+</script>
+</body>
+</html>
