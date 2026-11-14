@@ -271,6 +271,18 @@ h3{margin:0 0 var(--s-md);font-family:var(--font-display);font-size:var(--f-call
   #mapCard>.legend{top:calc(env(safe-area-inset-top,0px) + 12px);bottom:auto;left:12px;right:auto}
   #searchSlot{display:none}
 }
+
+/* recenter / my-location button */
+.locBtn{position:absolute;right:10px;top:60px;z-index:6;width:40px;height:40px;display:grid;place-items:center;background:var(--canvas);border:1px solid var(--hairline);border-radius:var(--cornering);color:var(--Blue);box-shadow:0 1px 4px rgba(5,30,57,.18)}
+.locBtn:hover{background:var(--pearl)}
+.locBtn.on{color:#1a73e8}.locBtn.on svg{fill:#1a73e8}
+.locBtn.wait svg{animation:locPulse 1s ease-in-out infinite}
+@keyframes locPulse{50%{opacity:.25}}
+.real:not(.ok)~.locBtn{display:none}
+@media(max-width:700px){
+  #mapCard .locBtn{top:calc(env(safe-area-inset-top,0px) + 60px);right:12px;width:44px;height:44px}
+  .dash .locBtn{top:10px}
+}
 </style>
 </head>
 <body>
@@ -280,7 +292,6 @@ h3{margin:0 0 var(--s-md);font-family:var(--font-display);font-size:var(--f-call
     <button data-v="map" class="active">Live map</button>
     <button data-v="report">Report an issue</button>
     <button data-v="mine">My reports</button>
-    <button data-v="dash" id="navDash" style="display:none">Facilities dashboard</button>
   </nav>
   <div class="role" id="role"><button data-r="student" class="on">Student</button><button data-r="facilities">Facilities staff</button></div>
 </header>
@@ -289,7 +300,6 @@ h3{margin:0 0 var(--s-md);font-family:var(--font-display);font-size:var(--f-call
   <button data-v="map" class="active" aria-label="Live map" title="Live map"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20z"/><path d="M9 4v13.5M15 6.5V20"/></svg></button>
   <button data-v="report" aria-label="Report an issue" title="Report an issue"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M5 4.5h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-8l-5 3.5v-3.5H5a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z"/><path d="M12 8v6M9 11h6"/></svg></button>
   <button data-v="mine" aria-label="My reports" title="My reports"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 7h11M9 12h11M9 17h11"/><circle cx="4.5" cy="7" r="1.2" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="4.5" cy="17" r="1.2" fill="currentColor" stroke="none"/></svg></button>
-  <button data-v="dash" id="dockDash" style="display:none" aria-label="Facilities dashboard" title="Facilities dashboard"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 20v-7M10 20V5M15 20v-9M20 20V8"/></svg></button>
 </nav>
 <button id="meBtn" aria-label="Switch view: student or facilities staff" title="Switch view"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9.2"/><circle cx="12" cy="10" r="3.2"/><path d="M6.4 18.4c1.3-2.1 3.2-3.2 5.6-3.2s4.3 1.1 5.6 3.2"/></svg></button>
 <div id="mePop" hidden><div class="mepop-t">View as</div><button data-r="student" class="on">Student</button><button data-r="facilities">Facilities staff</button></div>
@@ -304,7 +314,7 @@ h3{margin:0 0 var(--s-md);font-family:var(--font-display);font-size:var(--f-call
         <button class="btn gold sm" onclick="show('report')">+ Report here</button>
       </div>
       <div class="legend"><span><i style="background:var(--reported)"></i>Reported</span><span><i style="background:var(--assigned)"></i>Assigned</span><span><i style="background:var(--progress)"></i>In progress</span><span><i style="background:var(--fixed)"></i>Fixed</span></div>
-      <div class="mapwrap"><svg id="map" viewBox="0 0 900 640"></svg><div class="real" id="realMap"></div><div class="maptag" id="mapTag">Drawn map · live map loads when online</div></div>
+      <div class="mapwrap"><svg id="map" viewBox="0 0 900 640"></svg><div class="real" id="realMap"></div><button class="locBtn" data-locmap="realMap" aria-label="Go to my location" title="Go to my location"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M20.5 3.5 3.9 10.6c-.6.3-.5 1.1.1 1.3l6.5 1.6 1.6 6.5c.2.6 1 .7 1.3.1z"/></svg></button><div class="maptag" id="mapTag">Drawn map · live map loads when online</div></div>
     </div>
     <div id="sheet">
       <div class="sheet-top">
@@ -358,7 +368,7 @@ h3{margin:0 0 var(--s-md);font-family:var(--font-display);font-size:var(--f-call
     <div>
     <div class="card" style="padding:0;overflow:hidden;margin-bottom:18px">
       <div style="padding:14px 16px 8px;display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0">Live issue map</h3><small style="color:var(--ink-muted48)">Click a pin to open the issue</small></div>
-      <div class="mapwrap" style="height:420px;overflow:hidden"><svg id="dashSvg" viewBox="0 0 900 640" style="width:100%;height:100%;display:block;background:var(--parchment)" preserveAspectRatio="xMidYMid meet"></svg><div class="real" id="dashReal"></div><div class="maptag" id="dashTag">Drawn map · live map loads when online</div></div>
+      <div class="mapwrap" style="height:420px;overflow:hidden"><svg id="dashSvg" viewBox="0 0 900 640" style="width:100%;height:100%;display:block;background:var(--parchment)" preserveAspectRatio="xMidYMid meet"></svg><div class="real" id="dashReal"></div><button class="locBtn" data-locmap="dashReal" aria-label="Go to my location" title="Go to my location"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M20.5 3.5 3.9 10.6c-.6.3-.5 1.1.1 1.3l6.5 1.6 1.6 6.5c.2.6 1 .7 1.3.1z"/></svg></button><div class="maptag" id="dashTag">Drawn map · live map loads when online</div></div>
     </div>
     <div class="card" style="overflow:auto">
       <h3>Priority queue</h3>
@@ -384,6 +394,7 @@ h3{margin:0 0 var(--s-md);font-family:var(--font-display);font-size:var(--f-call
 // Paste your Google Maps JavaScript API browser key between the quotes (it starts with "AIza").
 // Leave it empty to use the free OpenStreetMap/Esri backup map.
 const MQ=matchMedia('(max-width:700px)'); // phone layout
+const HOME={lat:33.7765,lng:-84.3980},HOME_Z=16; // default view: GT campus
 let locFilter=null,searchMk=null;
 const GOOGLE_MAPS_API_KEY='AIzaSyA34YYSo3XxiBegv5Dq0J4WeaM4lIoA7uI';
 // ========================
@@ -522,10 +533,10 @@ function initMaps(){
   sc.src=`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GOOGLE_MAPS_API_KEY)}&callback=__gInit&loading=async`;
   document.head.appendChild(sc);
 }
-function initLeaflet(){initReal('realMap','mapTag',[33.7758,-84.3975],16);initReal('dashReal','dashTag',[33.7752,-84.3970],16)}
+function initLeaflet(){initReal('realMap','mapTag',[HOME.lat,HOME.lng],HOME_Z);initReal('dashReal','dashTag',[HOME.lat,HOME.lng],HOME_Z)}
 function gMake(id,tagId){
   const el=document.getElementById(id);
-  const m=new google.maps.Map(el,{center:{lat:33.7758,lng:-84.3975},zoom:16,mapTypeControl:!MQ.matches,mapTypeControlOptions:{position:google.maps.ControlPosition.RIGHT_BOTTOM},streetViewControl:false,fullscreenControl:!MQ.matches,zoomControl:!MQ.matches,clickableIcons:false,gestureHandling:MQ.matches&&id==='realMap'?'greedy':'cooperative'});
+  const m=new google.maps.Map(el,{center:HOME,zoom:HOME_Z,mapTypeControl:!MQ.matches,mapTypeControlOptions:{position:google.maps.ControlPosition.RIGHT_BOTTOM},streetViewControl:false,fullscreenControl:!MQ.matches,zoomControl:!MQ.matches,clickableIcons:false,gestureHandling:MQ.matches&&id==='realMap'?'greedy':'cooperative'});
   RM[id]={g:true,m,markers:[],ok:true};el.classList.add('ok');const t=document.getElementById(tagId);if(t)t.style.display='none';
 }
 function initReal(id,tagId,center,zoom){
@@ -542,12 +553,12 @@ function pinsTo(id,list){const r=RM[id];if(!r)return;
   if(r.g){r.markers.forEach(k=>k.setMap(null));r.markers=list.map(i=>{const pri=(i.cat==='Accessibility'||i.cat==='Safety')&&i.status!=='Fixed';
     const k=new google.maps.Marker({map:r.m,position:{lat:i.lat,lng:i.lng},title:`${i.title} · ${i.status} · ${i.votes} affected`,icon:gPinIcon(i),zIndex:pri?20:10});
     k.addListener('click',()=>openIssue(i.id));return k});
-    if(!r.fit&&list.length){r.fit=1;gFit(r)}return}r.layer.clearLayers();if(!r.fit&&list.length){r.fit=1;r.m.fitBounds(L.latLngBounds(list.map(i=>[i.lat,i.lng])).pad(0.15))}
+    drawMe();return}r.layer.clearLayers();drawMe();
   list.forEach(i=>{const pri=i.cat==='Accessibility'||i.cat==='Safety';
     L.marker([i.lat,i.lng],{icon:lPinIcon(i),zIndexOffset:pri?100:0})
      .bindTooltip(`${esc(i.title)} · ${i.status} · ${i.votes} affected`,{direction:'top',offset:[0,-PIN_H]}).on('click',()=>openIssue(i.id)).addTo(r.layer)})}
 function gFit(r){if(!r.markers.length)return;const b=new google.maps.LatLngBounds();r.markers.forEach(k=>b.extend(k.getPosition()));r.m.fitBounds(b,40)}
-function refreshReal(){Object.values(RM).forEach(r=>{if(r.g)return gFit(r);r.m.invalidateSize();if(r.layer.getLayers().length){r.m.fitBounds(L.featureGroup(r.layer.getLayers()).getBounds().pad(0.15))}})}
+function refreshReal(){Object.values(RM).forEach(r=>{if(!r.g)r.m.invalidateSize()})} // keep the user's view; maps start at HOME
 function drawMap(){
   const cat=$('#fCat').value,st=$('#fStatus').value;
   let h=baseMap();
@@ -751,10 +762,10 @@ function renderDash(){
   $('#ttf').innerHTML=Object.entries(bycat).sort((a,b)=>avg(b[1])-avg(a[1])).map(([c,a])=>`<div class="hbar"><span class="lab">${CATS[c].ico} ${esc(c)}</span><span class="track"><i style="width:${avg(a)/mt*100}%;background:var(--primary)"></i></span><span class="v">${avg(a).toFixed(1)}</span></div>`).join('');
 }
 
-function show(v){if(v==='report')setTimeout(initReportMap,30);document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.id==='v-'+v));document.querySelectorAll('#nav button,#dock button').forEach(b=>b.classList.toggle('active',b.dataset.v===v));document.body.dataset.view=v;closeDrawer();$('#mePop').hidden=true;window.scrollTo(0,0);setTimeout(refreshReal,30);if(v==='map')snapSheet(sheetState)}
+function show(v){const sec=(v==='map'&&role==='facilities')?'dash':v;if(v==='report')setTimeout(initReportMap,30);document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.id==='v-'+sec));document.querySelectorAll('#nav button,#dock button').forEach(b=>b.classList.toggle('active',b.dataset.v===v));document.body.dataset.view=sec;closeDrawer();$('#mePop').hidden=true;window.scrollTo(0,0);setTimeout(refreshReal,30);if(sec==='map')snapSheet(sheetState)}
 $('#nav').onclick=e=>{const b=e.target.closest('button');if(b)show(b.dataset.v)};
 function setRole(r){role=r;document.querySelectorAll('#role button,#mePop button').forEach(b=>b.classList.toggle('on',b.dataset.r===r));
-  $('#navDash').style.display=$('#dockDash').style.display=r==='facilities'?'':'none';show(r==='facilities'?'dash':'map')}
+  show('map')}
 $('#role').onclick=e=>{const r=e.target.dataset.r;if(r)setRole(r)};
 $('#dock').onclick=e=>{const b=e.target.closest('button');if(b)show(b.dataset.v)};
 $('#meBtn').onclick=e=>{e.stopPropagation();$('#mePop').hidden=!$('#mePop').hidden};
@@ -797,6 +808,30 @@ function snapSheet(s){if(!MQ.matches){SH.style.height='';return}sheetState=s;SH.
   top.addEventListener('pointerup',end);top.addEventListener('pointercancel',end)})();
 addEventListener('resize',()=>{snapSheet(sheetState);Object.values(RM).forEach(r=>{if(!r.g)r.m.invalidateSize()})});
 document.body.dataset.view='map';
+
+// ---- your location (blue dot) + recenter button ----
+let me=null,watchId=null,pendingLoc=null;
+function drawMe(){if(!me)return;Object.values(RM).forEach(r=>{const pos={lat:me.lat,lng:me.lng};
+  if(r.g){if(!r.me){r.me={dot:new google.maps.Marker({map:r.m,position:pos,clickable:false,zIndex:999,title:'You are here',icon:{path:google.maps.SymbolPath.CIRCLE,scale:7,fillColor:'#1a73e8',fillOpacity:1,strokeColor:'#ffffff',strokeWeight:2.5}}),
+      ring:new google.maps.Circle({map:r.m,center:pos,radius:me.acc,strokeColor:'#1a73e8',strokeOpacity:.3,strokeWeight:1,fillColor:'#1a73e8',fillOpacity:.12,clickable:false})}}
+    else{r.me.dot.setPosition(pos);r.me.ring.setCenter(pos);r.me.ring.setRadius(me.acc)}}
+  else{if(!r.me){r.me={ring:L.circle([me.lat,me.lng],{radius:me.acc,color:'#1a73e8',weight:1,opacity:.3,fillOpacity:.12,interactive:false}).addTo(r.m),dot:L.circleMarker([me.lat,me.lng],{radius:7,color:'#fff',weight:2.5,fillColor:'#1a73e8',fillOpacity:1,interactive:false}).addTo(r.m)}}
+    else{r.me.dot.setLatLng([me.lat,me.lng]);r.me.ring.setLatLng([me.lat,me.lng]).setRadius(me.acc)}}})}
+function setLocBtn(id,state){document.querySelectorAll(`[data-locmap="${id}"]`).forEach(b=>{b.classList.toggle('on',state==='on');b.classList.toggle('wait',state==='wait')})}
+function goTo(id,pos){const r=RM[id];if(!r)return;if(r.g){r.m.setZoom(HOME_Z);r.m.panTo(pos)}else r.m.setView([pos.lat,pos.lng],HOME_Z);
+  if(!r.unlock){r.unlock=1;const off=()=>setLocBtn(id,'');r.g?r.m.addListener('dragstart',off):r.m.on('dragstart',off)}}
+function startWatch(){if(watchId!==null||!navigator.geolocation)return;
+  watchId=navigator.geolocation.watchPosition(p=>{me={lat:p.coords.latitude,lng:p.coords.longitude,acc:p.coords.accuracy};drawMe();
+    if(pendingLoc){const id=pendingLoc;pendingLoc=null;goTo(id,me);setLocBtn(id,'on')}},
+   err=>{watchId=null;if(pendingLoc){const id=pendingLoc;pendingLoc=null;setLocBtn(id,'');goTo(id,HOME);
+     toast(err.code===1?'Location is turned off for this site. Allow it in your browser settings to see where you are.':'Couldn’t find your location right now. Showing campus instead.')}},
+   {enableHighAccuracy:true,maximumAge:5000,timeout:15000})}
+function locateTo(id){if(!navigator.geolocation){goTo(id,HOME);toast('Location isn’t available on this device. Showing campus instead.');return}
+  if(me){goTo(id,me);setLocBtn(id,'on');return}
+  pendingLoc=id;setLocBtn(id,'wait');startWatch()}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-locmap]');if(b){e.stopPropagation();locateTo(b.dataset.locmap)}});
+// if location was already allowed, show the blue dot right away (no prompt)
+try{navigator.permissions&&navigator.permissions.query({name:'geolocation'}).then(p=>{if(p.state==='granted')startWatch()}).catch(()=>{})}catch(e){}
 // search lives on the map on desktop, in the bottom sheet on phones
 function placeSearch(){const el=$('.search'),to=MQ.matches?$('.sheet-top'):$('#searchSlot');if(el.parentElement!==to)to.appendChild(el)}
 MQ.addEventListener('change',()=>{placeSearch();snapSheet(sheetState)});placeSearch();
