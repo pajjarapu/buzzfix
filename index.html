@@ -326,7 +326,7 @@ body[data-role=facilities] #sheet>.filters,body[data-role=facilities] #feed{disp
 #login[hidden]{display:none}
 body.signed-out{overflow:hidden}
 .login-card{width:100%;max-width:420px;background:var(--canvas);border-radius:var(--cornering);padding:var(--s-xxl) var(--s-xl);border-top:3px solid var(--Gold)}
-.login-logo{font-family:var(--font-georgia);font-size:36px;font-weight:700;line-height:1}.login-logo .wm-buzz{color:var(--Blue)}
+.login-logo{margin-bottom:var(--s-xl);font-family:var(--font-georgia);font-size:36px;font-weight:700;line-height:1}.login-logo .wm-buzz{color:var(--Blue)}
 .login-tag{color:var(--ink-muted48);margin:var(--s-sm) 0 var(--s-xl)}
 .login-card h2{font-size:var(--f-title3);margin:0 0 var(--s-sm)}
 .login-copy{color:var(--ink-muted80);margin:0 0 var(--s-lg)}
@@ -410,6 +410,20 @@ body.signed-out{overflow:hidden}
 .dup-q{margin:var(--s-lg) 0 var(--s-sm);font-weight:700}
 .dup-actions{display:flex;gap:var(--s-sm);justify-content:flex-end;flex-wrap:wrap}
 @media(max-width:700px){#dupModal{place-items:end center;padding:0 0 calc(var(--dockH) + 8px)}.dup-box{width:calc(100% - 16px)}.dup-actions .btn{flex:1}}
+
+/* staff queue cards: icon left, priority box right (mirrors the student cards) */
+.qcards tr.q{padding:var(--s-md) 64px var(--s-md) 52px}
+.qcards tr.q td.qico{position:absolute;left:0;top:var(--s-md);width:40px;height:40px;display:grid;place-items:center;font-size:30px;line-height:1;overflow:hidden;border-radius:var(--cornering)}
+.qcards tr.q td.qico img{width:100%;height:100%;object-fit:cover}
+.qcards tr.q td.qtitle{flex:1 1 100%;min-width:0;font-size:var(--f-callout)}
+.qcards tr.q td.qtitle b{font-weight:600}
+.qcards tr.q td.qscore{position:absolute;right:0;top:var(--s-md);font-size:inherit}
+.pbox{display:flex;flex-direction:column;align-items:center;min-width:52px;padding:var(--s-xs) var(--s-sm);border:1px solid var(--hairline);border-radius:var(--cornering);background:var(--canvas)}
+.pbox b{font-size:var(--f-callout);font-weight:700;color:var(--ink);line-height:1.2}
+.pbox small{font-size:10px;color:var(--ink-muted48);text-transform:uppercase;letter-spacing:.04em}
+/* the old fixed-column rules: column 1 is now the icon, 2 the title, 4 votes, 5 age, 7 crew, 8 action */
+.qcards tr.q td:nth-child(1){font-size:30px}
+.qcards tr.q td:nth-child(3){flex:1 1 100%}
 </style>
 </head>
 <body>
@@ -417,7 +431,6 @@ body.signed-out{overflow:hidden}
 <div id="login" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
   <div class="login-card">
     <div class="login-logo" aria-label="BuzzFix"><span class="wm-buzz">Buzz</span><span class="wm-fix">Fix</span></div>
-    <p class="login-tag">Report what's broken on campus. Track it until it's fixed.</p>
     <div id="loginStep1">
       <h2 id="loginTitle">Sign in</h2>
       <p class="login-copy">Use your Georgia Tech account. Students see the live map and their reports; Facilities Management staff see the work queue.</p>
@@ -434,7 +447,7 @@ body.signed-out{overflow:hidden}
   </div>
 </div>
 <header>
-  <div class="logo"><span class="wm-buzz">Buzz</span><span class="wm-fix">Fix</span><span class="proto">Prototype · sample data</span></div>
+  <div class="logo"><span class="wm-buzz">Buzz</span><span class="wm-fix">Fix</span></div>
   <nav id="nav">
     <button data-v="map" class="active">Live map</button>
     <button data-v="report">Report an issue</button>
@@ -455,7 +468,6 @@ body.signed-out{overflow:hidden}
 <main>
 <section class="view active" id="v-map">
   <h2 id="mapTitle">What's broken on campus right now</h2>
-  <p class="sub" id="mapSub">Every open issue, live. Upvote the ones affecting you; the most-felt problems rise to the top of the facilities queue.</p>
   <div class="mapgrid">
     <div class="card" id="mapCard">
       <div class="maptools"><div id="searchSlot"></div>
@@ -489,7 +501,6 @@ body.signed-out{overflow:hidden}
 
 <section class="view" id="v-report">
   <h2>Report an issue in 10 seconds</h2>
-  <p class="sub">Snap a photo, add a few words. BuzzFix figures out the category, urgency and the right crew, and checks if someone already reported it.</p>
   <div class="report">
     <div class="card">
       <label class="f" style="margin-top:0">1 · Photo</label>
@@ -512,7 +523,6 @@ body.signed-out{overflow:hidden}
 
 <section class="view" id="v-mine">
   <h2>My reports</h2>
-  <p class="sub">No more reporting into a void. Follow every report until it's fixed, and get notified when it is.</p>
   <div class="feed" id="mine" style="max-height:none"></div>
 </section>
 
@@ -946,7 +956,7 @@ function renderDash(){
    [open.reduce((a,i)=>a+i.votes,0),'People currently affected','']
   ].map(([n,l,d])=>`<div class="card stat"><div class="n">${n}</div><div class="l">${l}</div>${d?`<div class="d">${d}</div>`:''}</div>`).join('');
   const q=open.filter(matchQ).sort((a,b)=>score(b)-score(a));
-  $('#queue').innerHTML=q.map(i=>`<tr class="q" data-id="${i.id}" style="cursor:pointer"><td class="score">${score(i)}</td><td><div style="display:flex;gap:8px;align-items:center"><span>${CATS[i.cat].ico}</span><div><b>${esc(i.title)}</b><div class="chips" style="margin-top:3px">${flags(i)}</div></div></div></td><td>${esc(B[i.b].name)}<br><small style="color:var(--ink-muted48)">${esc(i.loc)}</small><br><a href="${gmaps(i)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:12px;color:var(--primary)">📍 Open in Maps ↗</a></td><td>${i.votes}</td><td>${ago(i.created)}</td><td><span class="${stc(i.status)}">${i.status}</span></td><td><small>${esc(i.crew||'Unassigned')}</small></td><td><button class="btn sm" data-adv="${i.id}">${i.status==='Reported'?'Assign':i.status==='Assigned'?'Start':'Mark fixed'}</button></td></tr>`).join('')||(noMatchMsg()?`<tr><td colspan="8" class="empty">${noMatchMsg()}</td></tr>`:'<tr><td colspan="8" class="empty">Queue is clear 🎉</td></tr>');
+  $('#queue').innerHTML=q.map(i=>`<tr class="q" data-id="${i.id}" style="cursor:pointer"><td class="qico">${icon(i)}</td><td class="qtitle"><b>${esc(i.title)}</b></td><td>${esc(B[i.b].name)}<br><small style="color:var(--ink-muted48)">${esc(i.loc)}</small><br><a href="${gmaps(i)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:12px;color:var(--primary)">📍 Open in Maps ↗</a></td><td>${i.votes}</td><td>${ago(i.created)}</td><td><span class="${stc(i.status)}">${i.status}</span></td><td><small>${esc(i.crew||'Unassigned')}</small></td><td><button class="btn sm" data-adv="${i.id}">${i.status==='Reported'?'Assign':i.status==='Assigned'?'Start':'Mark fixed'}</button></td><td class="qscore" title="Priority score: severity × people affected + days open (+40 for accessibility/safety)"><div class="pbox"><b>${score(i)}</b><small>priority</small></div></td></tr>`).join('')||(noMatchMsg()?`<tr><td colspan="8" class="empty">${noMatchMsg()}</td></tr>`:'<tr><td colspan="8" class="empty">Queue is clear 🎉</td></tr>');
   const bc={};open.forEach(i=>bc[i.b]=(bc[i.b]||0)+1);const mx=Math.max(1,...Object.values(bc));
   $('#byBld').innerHTML=Object.entries(bc).sort((a,b)=>b[1]-a[1]).map(([b,n])=>`<div class="hbar"><span class="lab">${esc(B[b].name)}</span><span class="track"><i style="width:${n/mx*100}%"></i></span><span class="v">${n}</span></div>`).join('');
   const groups={};issues.forEach(i=>{const k=i.b+'|'+i.cat+'|'+i.loc;(groups[k]=groups[k]||[]).push(i)});
@@ -1027,8 +1037,7 @@ function snapSheet(s){sheetState=s;SH.style.height=''}
   top.addEventListener('pointerup',end);top.addEventListener('pointercancel',end)})();
 addEventListener('resize',()=>{snapSheet(sheetState);Object.values(RM).forEach(r=>{if(!r.g)r.m.invalidateSize()})});
 document.body.dataset.view='map';document.body.dataset.role=role;
-function setMapTitle(){const f=role==='facilities';$('#mapTitle').textContent=f?'Facilities dashboard':"What's broken on campus right now";
-  $('#mapSub').textContent=f?'One de-duplicated queue, ranked by severity, how many people are affected, accessibility impact and age. Tickets can sync to the existing work-order system.':'Every open issue, live. Upvote the ones affecting you; the most-felt problems rise to the top of the facilities queue.'}
+function setMapTitle(){const f=role==='facilities';$('#mapTitle').textContent=f?'Facilities dashboard':"What's broken on campus right now";}
 
 // ---- your location (blue dot) + recenter button ----
 let me=null,watchId=null,pendingLoc=null;
