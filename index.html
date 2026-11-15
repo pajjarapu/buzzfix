@@ -473,6 +473,7 @@ html.standalone .drawer{height:auto;bottom:calc(0px - var(--gap))}
 .myroom-btn:hover{border-color:var(--Gold)}
 .myroom-btn[hidden]{display:none}
 .vote-static{cursor:default;color:var(--ink-muted80)}
+body[data-role=facilities] #nav button[data-v=report],body[data-role=facilities] #dock button[data-v=report],body[data-role=facilities] .report-only{display:none!important}
 </style>
 </head>
 <body>
@@ -520,7 +521,7 @@ html.standalone .drawer{height:auto;bottom:calc(0px - var(--gap))}
   <div class="mapgrid">
     <div class="card" id="mapCard">
       <div class="maptools"><div id="searchSlot"></div>
-        <button class="btn gold sm" onclick="show('report')">+ Report here</button>
+        <button class="btn gold sm report-only" onclick="show('report')">+ Report here</button>
       </div>
       <div class="legend"><span><i style="background:var(--reported)"></i>Reported</span><span><i style="background:var(--assigned)"></i>Assigned</span><span><i style="background:var(--progress)"></i>In progress</span><span><i style="background:var(--fixed)"></i>Fixed</span></div>
       <div id="peek" hidden role="dialog" aria-label="Issue summary"></div>
@@ -1082,7 +1083,8 @@ document.addEventListener('click',e=>{
 });
 
 function renderMine(){
-  const staff=role==='facilities',l=staff?issues.filter(i=>i.status!=='Fixed').sort((a,b)=>score(b)-score(a)):issues.filter(i=>i.mine);
+  const staff=role==='facilities',fixedAt=i=>{const h=i.hist.find(x=>x.s==='Fixed');return h?h.t:0};
+  const l=(staff?issues.slice():issues.filter(i=>i.mine)).sort((a,b)=>(a.status==='Fixed')-(b.status==='Fixed')||(a.status==='Fixed'?fixedAt(b)-fixedAt(a):staff?score(b)-score(a):b.created-a.created));
   $('#mine').innerHTML=l.length?l.map(i=>`<div class="card"><div class="issue" data-id="${i.id}" style="padding:0">${card(i).replace(/^<div class="card issue" data-id="\d+">/,'').replace(/<\/div>$/,'')}</div>
    <div style="display:flex;margin-top:12px">${STAGES.map((s,k)=>`<div style="flex:1;text-align:center;font-size:11px;font-weight:${k<=STAGES.indexOf(i.status)?700:400};color:${k<=STAGES.indexOf(i.status)?'var(--ink)':'var(--ink-muted48)'}"><div style="height:4px;margin:0 2px 6px;border-radius:2px;background:${k<=STAGES.indexOf(i.status)?color(i.status):'var(--hairline)'}"></div>${s}</div>`).join('')}</div></div>`).join('')
    :'<div class="card empty">You haven\'t <a href="#" onclick="show(\'report\');return false">reported an issue</a> yet.</div>';
@@ -1111,7 +1113,8 @@ function renderDash(){
   $('#ttf').innerHTML=Object.entries(bycat).sort((a,b)=>avg(b[1])-avg(a[1])).map(([c,a])=>`<div class="hbar"><span class="lab">${CATS[c].ico} ${esc(c)}</span><span class="track"><i style="width:${avg(a)/mt*100}%;background:var(--primary)"></i></span><span class="v">${avg(a).toFixed(1)}</span></div>`).join('');
 }
 
-function show(v){fitStandalone();closePeek();document.body.classList.remove('panel-open');const sec=v;if(v==='report')setTimeout(initReportMap,30);document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.id==='v-'+sec));document.querySelectorAll('#nav button,#dock button').forEach(b=>b.classList.toggle('active',b.dataset.v===v));document.body.dataset.view=sec;closeDrawer();$('#mePop').hidden=true;window.scrollTo(0,0);setTimeout(refreshReal,30);if(sec==='map')snapSheet(sheetState)}
+function show(v){if(v==='report'&&role==='facilities')v='map'; // staff don't file reports
+  fitStandalone();closePeek();document.body.classList.remove('panel-open');const sec=v;if(v==='report')setTimeout(initReportMap,30);document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.id==='v-'+sec));document.querySelectorAll('#nav button,#dock button').forEach(b=>b.classList.toggle('active',b.dataset.v===v));document.body.dataset.view=sec;closeDrawer();$('#mePop').hidden=true;window.scrollTo(0,0);setTimeout(refreshReal,30);if(sec==='map')snapSheet(sheetState)}
 $('#nav').onclick=e=>{const b=e.target.closest('button');if(b)show(b.dataset.v)};
 function setRole(r){role=r;setTimeout(buildBldOptions,0);setTimeout(renderAll,0);document.body.dataset.role=r;setMapTitle();drawMap();document.querySelectorAll('#role button,#mePop button').forEach(b=>b.classList.toggle('on',b.dataset.r===r));
   show('map')}
