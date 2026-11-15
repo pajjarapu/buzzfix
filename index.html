@@ -396,6 +396,20 @@ body.signed-out{overflow:hidden}
   #peek{position:fixed;left:12px;right:12px;width:auto;bottom:calc(var(--dockH) + 12px)}
   body.peek-open #mapCard>.legend{display:none}
 }
+
+/* ---- AI duplicate warning ---- */
+#dupModal{position:fixed;inset:0;z-index:90;background:var(--scrim);display:grid;place-items:center;padding:var(--s-base)}
+#dupModal[hidden]{display:none}
+.dup-box{width:min(480px,100%);max-height:calc(100vh - 32px);overflow:auto;background:var(--canvas);border-radius:var(--cornering);border-top:3px solid var(--Gold);padding:var(--s-xl);animation:peekIn .2s var(--ease)}
+.dup-box h3{font-size:var(--f-headline);margin:0 0 var(--s-base);line-height:1.3}
+.dup-card{margin:0;display:flex;gap:var(--s-md);padding:var(--s-md)}
+.dup-card .t{font-weight:600}.dup-card small{color:var(--ink-muted48);font-size:var(--f-caption)}
+.dup-desc{margin-top:4px;color:var(--ink-muted80);font-size:var(--f-callout)}
+.dup-why{margin:var(--s-base) 0 var(--s-xs);font-size:var(--f-callout)}
+.dup-src{margin:0;font-size:var(--f-micro);color:var(--ink-muted48)}
+.dup-q{margin:var(--s-lg) 0 var(--s-sm);font-weight:700}
+.dup-actions{display:flex;gap:var(--s-sm);justify-content:flex-end;flex-wrap:wrap}
+@media(max-width:700px){#dupModal{place-items:end center;padding:0 0 calc(var(--dockH) + 8px)}.dup-box{width:calc(100% - 16px)}.dup-actions .btn{flex:1}}
 </style>
 </head>
 <body>
@@ -508,6 +522,7 @@ body.signed-out{overflow:hidden}
 <div class="overlay" id="overlay"></div>
 <aside class="drawer" id="drawer"><button class="close" onclick="closeDrawer()">&times;</button><div id="dBody"></div></aside>
 <div class="toast" id="toast"></div>
+<div id="dupModal" hidden role="dialog" aria-modal="true" aria-labelledby="dupTitle"><div class="dup-box" id="dupBody"></div></div>
 
 <script>
 // ===== GOOGLE MAPS =====
@@ -729,6 +744,7 @@ function openIssue(id){
   <h3 style="margin-top:20px">Progress</h3>
   <div class="timeline">${STAGES.map((s,k)=>{const hh=i.hist.find(x=>x.s===s);return`<div class="${k<=si?'done':''}"><b>${s}</b>${hh?`<small>${new Date(hh.t).toLocaleDateString(undefined,{month:'short',day:'numeric'})}${s==='Assigned'&&i.crew?' · '+esc(i.crew)+' crew':''}</small>`:'<small>pending</small>'}</div>`}).join('')}</div>
   ${role==='facilities'&&i.status!=='Fixed'?`<button class="btn gold" style="width:100%" data-adv="${i.id}">Move to "${STAGES[si+1]}"</button>`:''}
+  ${i.aiFlag&&role==='facilities'?(()=>{const o=issues.find(x=>x.id===i.aiFlag.id);return o?`<div class="dup" style="margin-top:16px">🤖 <b>Possible duplicate:</b> ${i.aiFlag.src==='claude'?'Claude':'The duplicate check'} matched this to <a href="#" data-openissue="${o.id}">${esc(o.cat)} at ${esc(B[o.b].name)}${o.loc&&o.loc!=='Not specified'?' ('+esc(o.loc)+')':''}</a> (${Math.round(i.aiFlag.conf*100)}%). The reporter said it's a different problem.</div>`:''})():''}
   ${(()=>{const past=issues.filter(x=>x!==i&&x.b===i.b&&x.cat===i.cat&&x.loc===i.loc);return past.length?`<div class="dup" style="margin-top:16px">🔁 <b>Recurring:</b> this has been reported here ${past.length} other time${past.length>1?'s':''} before. Facilities sees it flagged as a hotspot.</div>`:''})()}`;
   $('#drawer').classList.add('open');$('#overlay').classList.add('open');
   drawerMap(i);
@@ -835,15 +851,72 @@ function runTriage(){
    ${dups.map(i=>`<div class="card issue" data-id="${i.id}" style="margin-top:8px"><div class="ico">${icon(i)}</div><div style="flex:1"><div class="t">${esc(i.title)}</div><small>${esc(i.loc)} · ${i.votes} affected · ${i.status}</small></div><button class="btn sm gold" data-merge="${i.id}">That's it, upvote</button></div>`).join('')}</div>`:(b?'<div class="card" style="margin-top:14px;color:var(--ink-muted48)">✓ No similar open reports here. You\'re the first to flag this.</div>':'');
 }
 function resetForm(){pin=null;$('#locMsg').textContent='or tap the map to pin the exact spot';drawMini();$('#desc').value='';$('#room').value='';$('#bld').value='';photoData=null;$('#drop').querySelectorAll('img').forEach(x=>x.remove());$('#dropTxt').style.display='';$('#photo').value='';runTriage()}
-$('#submit').onclick=()=>{
-  if(!triage||!$('#bld').value)return;
+function createReport(extra){
   const b=$('#bld').value,bb=B[b],d=$('#desc').value.trim();
-  const i={id:++seq,title:d.charAt(0).toUpperCase()+d.slice(1),cat:triage.cat,b,loc:$('#room').value||'Not specified',status:'Reported',created:Date.now(),votes:1,voted:true,mine:true,photo:photoData,crew:'',hist:[{s:'Reported',t:Date.now()}],
+  const i={...(extra||{}),id:++seq,title:d.charAt(0).toUpperCase()+d.slice(1),cat:triage.cat,b,loc:$('#room').value||'Not specified',status:'Reported',created:Date.now(),votes:1,voted:true,mine:true,photo:photoData,crew:'',hist:[{s:'Reported',t:Date.now()}],
     x:pin?pin.x:bb.x+bb.w/2,y:pin?pin.y:bb.y+bb.h/2+6,exact:!!pin,...(pin?{lat:pin.lat,lng:pin.lng,acc:pin.acc}:{lat:bb.lat,lng:bb.lng,acc:null})};
   issues.unshift(i);resetForm();renderAll();show('mine');
   toast(`Report sent to <b>${CATS[i.cat].crew}</b>. We'll notify you at every step.`);
   setTimeout(()=>{if(i.status==='Reported'){advance(i.id);toast(`🔧 <b>${CATS[i.cat].crew} crew</b> assigned to your report.`)}},6000);
-};
+}
+
+// ---- AI duplicate check before a report is filed ----
+const DUP_THRESHOLD=0.6,DUP_RADIUS_M=75;
+const distM=(a,b)=>{const R=6371e3,t=Math.PI/180,dLat=(b.lat-a.lat)*t,dLng=(b.lng-a.lng)*t,x=Math.sin(dLat/2)**2+Math.cos(a.lat*t)*Math.cos(b.lat*t)*Math.sin(dLng/2)**2;return 2*R*Math.asin(Math.sqrt(x))};
+function draftReport(){const b=$('#bld').value,bb=B[b];return{description:$('#desc').value.trim(),category:triage.cat,b,building:bb.name,room:$('#room').value.trim(),lat:pin?pin.lat:bb.lat,lng:pin?pin.lng:bb.lng}}
+function dupCandidates(r){return issues.filter(i=>i.status!=='Fixed').map(i=>({i,d:distM(r,i)})).filter(x=>x.i.b===r.b||x.d<=DUP_RADIUS_M).sort((a,b)=>a.d-b.d).slice(0,12)}
+// local fallback: distance + category + room + shared words
+const STOP=new Set('the a an is are was on in at of to and or by for with near from it its this that not no my our floor room broken there here very really'.split(' '));
+const words=t=>new Set(String(t).toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>2&&!STOP.has(w)).map(w=>w.replace(/(ing|ed|es|s)$/,'')));
+function localDupCheck(r,cands){let best=null;
+  const rw=words(r.description+' '+r.room);
+  cands.forEach(({i,d})=>{const iw=words(i.title+' '+i.loc);let shared=0;rw.forEach(w=>{if(iw.has(w))shared++});
+    const textSim=shared/Math.max(1,Math.min(rw.size,iw.size));
+    const sc=(i.cat===r.category?.35:0)+(d<=25?.25:d<=DUP_RADIUS_M?.15:i.b===r.b?.08:0)+Math.min(.4,textSim*.55)+(r.room&&i.loc.toLowerCase().includes(r.room.toLowerCase())?.1:0);
+    if(!best||sc>best.sc)best={i,sc,shared}});
+  if(!best)return{duplicateId:null,confidence:0,source:'local'};
+  const c=Math.min(.95,best.sc);
+  return{duplicateId:c>=DUP_THRESHOLD?best.i.id:null,confidence:c,source:'local',reason:`Both are ${best.i.cat.toLowerCase()} reports at ${B[best.i.b].name}${best.i.loc&&best.i.loc!=='Not specified'?' ('+best.i.loc+')':''}${best.shared?' with matching details':''}.`}}
+function shrinkPhoto(dataUrl){return new Promise(res=>{if(!dataUrl)return res(null);const im=new Image();im.onload=()=>{const k=Math.min(1,800/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);try{res(c.toDataURL('image/jpeg',.7))}catch(e){res(null)}};im.onerror=()=>res(null);im.src=dataUrl})}
+async function aiDupCheck(r,cands){
+  const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),9000);
+  try{const photo=await shrinkPhoto(photoData);
+    const resp=await fetch('/api/check-duplicate',{method:'POST',headers:{'Content-Type':'application/json'},signal:ctl.signal,
+      body:JSON.stringify({report:{description:r.description,category:r.category,building:r.building,room:r.room,lat:r.lat,lng:r.lng,photo},
+        candidates:cands.map(({i,d})=>({id:i.id,title:i.title,category:i.cat,building:B[i.b].name,room:i.loc,status:i.status,votes:i.votes,ageDays:(NOW-i.created)/day,distanceM:d}))})});
+    if(!resp.ok)throw new Error('http '+resp.status);
+    const j=await resp.json();if(typeof j.confidence!=='number')throw new Error('bad reply');return j}
+  catch(e){return localDupCheck(r,cands)}finally{clearTimeout(t)}}
+let dupPending=null;
+function showDupModal(match,res){const i=match;
+  $('#dupBody').innerHTML=`<h3 id="dupTitle">This looks like a request that has already been submitted.</h3>
+  <div class="card dup-card"><div class="ico">${icon(i)}</div><div style="flex:1;min-width:0"><div class="t">${esc(i.cat)}</div><small>${esc(B[i.b].name)} · ${esc(i.loc)} · ${ago(i.created)}</small>
+   <div class="dup-desc">${esc(i.title)}</div><div class="chips" style="margin-top:6px"><span class="${stc(i.status)}">${i.status}</span><span class="chip">▲ ${i.votes} affected</span></div></div></div>
+  ${res.reason?`<p class="dup-why"><b>Why:</b> ${esc(res.reason)}</p>`:''}
+  <p class="dup-src">${res.source==='claude'?'Checked by Claude':'Simulated check (AI service not reachable)'} · ${Math.round(res.confidence*100)}% match</p>
+  <p class="dup-q">Is this a duplicate request?</p>
+  <div class="dup-actions"><button class="btn ghost" type="button" data-dup="no">No, submit as new</button><button class="btn gold" type="button" data-dup="yes">Yes, add me to it</button></div>`;
+  $('#dupModal').hidden=false;$('#dupModal [data-dup=yes]').focus()}
+function closeDupModal(){$('#dupModal').hidden=true;dupPending=null}
+function setSubmitBusy(b){const s=$('#submit');s.disabled=b;s.textContent=b?'Checking for duplicates…':'Submit report'}
+$('#submit').onclick=async()=>{
+  if(!triage||!$('#bld').value||$('#submit').dataset.busy)return;
+  const r=draftReport(),cands=dupCandidates(r);
+  if(!cands.length)return createReport();
+  $('#submit').dataset.busy=1;setSubmitBusy(true);
+  const res=await aiDupCheck(r,cands);
+  delete $('#submit').dataset.busy;setSubmitBusy(false);
+  const match=res.duplicateId!=null&&res.confidence>=DUP_THRESHOLD?issues.find(x=>x.id===res.duplicateId):null;
+  if(!match)return createReport();
+  dupPending={match,res};showDupModal(match,res)};
+$('#dupModal').addEventListener('click',e=>{const b=e.target.closest('[data-dup]');
+  if(!b){if(e.target.id==='dupModal')closeDupModal();return}
+  e.stopPropagation();const p=dupPending;if(!p)return closeDupModal();
+  if(b.dataset.dup==='yes'){const i=p.match;if(!i.voted){i.voted=true;i.votes++}i.mine=true;closeDupModal();resetForm();renderAll();show('mine');
+    toast(`Added you to the existing report. <b>${i.votes}</b> people affected. You'll get updates.`)}
+  else{closeDupModal();createReport({aiFlag:{id:p.match.id,conf:p.res.confidence,src:p.res.source}})}},true);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#dupModal').hidden)closeDupModal()});
+document.addEventListener('click',e=>{const a=e.target.closest('[data-openissue]');if(a){e.preventDefault();e.stopPropagation();openIssue(+a.dataset.openissue)}},true);
 document.addEventListener('click',e=>{
   const m=e.target.closest('[data-merge]');if(m){e.stopPropagation();const i=issues.find(x=>x.id==m.dataset.merge);if(!i.voted){i.voted=true;i.votes++;i.mine=true}resetForm();renderAll();show('mine');toast(`Merged with the existing report. <b>${i.votes}</b> people affected. You'll get updates.`);return}
   const v=e.target.closest('[data-vote]');if(v){e.stopPropagation();vote(+v.dataset.vote);if($('#drawer').classList.contains('open'))openIssue(+v.dataset.vote);return}
