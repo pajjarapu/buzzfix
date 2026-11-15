@@ -12,7 +12,7 @@
 :root{
   /* GT design system tokens */
   --Gold:#8f713d;--Blue:#051e39;--White:#ffffff;--cornering:2px;
-  --font-roboto:'Roboto',sans-serif;--font-display:'DINNext Slab Pro','Roboto Slab',serif;
+  --font-roboto:'Roboto',sans-serif;--font-georgia:'Georgia',serif;--font-display:'DINNext Slab Pro','Roboto Slab',serif;
   /* roles mapped onto the system palette */
   --primary:var(--Gold);--primary-focus:#7a5f31;--primary-on-dark:var(--Gold);
   --ink:var(--Blue);--ink-muted80:rgba(5,30,57,.82);--ink-muted48:rgba(5,30,57,.58);--body-on-dark:var(--White);--body-muted:rgba(255,255,255,.72);
@@ -38,8 +38,9 @@ a{color:var(--primary);text-decoration:none}a:hover{text-decoration:underline}
 
 /* ---- global nav: true black bar ---- */
 header{background:var(--Blue);border-bottom:3px solid var(--Gold);color:var(--body-on-dark);padding:var(--s-sm) var(--s-xl);display:flex;align-items:center;gap:var(--s-lg);flex-wrap:wrap;position:sticky;top:0;z-index:20;min-height:52px}
-.logo{font-family:var(--font-display);font-size:24px;font-weight:700;letter-spacing:0;line-height:1}
-.logo span:not(.proto){color:var(--primary-on-dark)}
+.logo{font-family:var(--font-georgia);font-size:24px;font-weight:700;letter-spacing:0;line-height:1}
+/* wordmark: "Buzz" white or navy depending on background, "Fix" gold */
+.wm-buzz{color:var(--White)}.wm-fix{color:var(--Gold)}
 .proto{font-family:var(--font-roboto);font-size:var(--f-micro);font-weight:400;letter-spacing:0;background:rgba(255,255,255,.1);color:var(--body-muted);padding:var(--s-xxs) var(--s-sm);border-radius:var(--r-pill);margin-left:var(--s-sm);vertical-align:middle}
 nav{display:flex;gap:var(--s-xs);flex-wrap:wrap}
 nav button{background:none;border:none;color:var(--body-muted);padding:var(--s-xs) var(--s-md);border-radius:var(--r-pill);font-size:var(--f-caption);font-weight:400}
@@ -325,7 +326,7 @@ body[data-role=facilities] #sheet>.filters,body[data-role=facilities] #feed{disp
 #login[hidden]{display:none}
 body.signed-out{overflow:hidden}
 .login-card{width:100%;max-width:420px;background:var(--canvas);border-radius:var(--cornering);padding:var(--s-xxl) var(--s-xl);border-top:3px solid var(--Gold)}
-.login-logo{font-family:var(--font-display);font-size:36px;font-weight:700;color:var(--Blue);line-height:1}.login-logo span{color:var(--Gold)}
+.login-logo{font-family:var(--font-georgia);font-size:36px;font-weight:700;line-height:1}.login-logo .wm-buzz{color:var(--Blue)}
 .login-tag{color:var(--ink-muted48);margin:var(--s-sm) 0 var(--s-xl)}
 .login-card h2{font-size:var(--f-title3);margin:0 0 var(--s-sm)}
 .login-copy{color:var(--ink-muted80);margin:0 0 var(--s-lg)}
@@ -356,7 +357,7 @@ body.signed-out{overflow:hidden}
 <!-- DEMO sign-in: simulates GT Login. No real credentials are requested, sent or stored. -->
 <div id="login" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
   <div class="login-card">
-    <div class="login-logo">BuzzFix<span>.</span></div>
+    <div class="login-logo" aria-label="BuzzFix"><span class="wm-buzz">Buzz</span><span class="wm-fix">Fix</span></div>
     <p class="login-tag">Report what's broken on campus. Track it until it's fixed.</p>
     <div id="loginStep1">
       <h2 id="loginTitle">Sign in</h2>
@@ -374,7 +375,7 @@ body.signed-out{overflow:hidden}
   </div>
 </div>
 <header>
-  <div class="logo">BuzzFix<span>.</span><span class="proto">Prototype · sample data</span></div>
+  <div class="logo"><span class="wm-buzz">Buzz</span><span class="wm-fix">Fix</span><span class="proto">Prototype · sample data</span></div>
   <nav id="nav">
     <button data-v="map" class="active">Live map</button>
     <button data-v="report">Report an issue</button>
