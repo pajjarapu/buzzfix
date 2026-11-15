@@ -424,6 +424,19 @@ body.signed-out{overflow:hidden}
 /* the old fixed-column rules: column 1 is now the icon, 2 the title, 4 votes, 5 age, 7 crew, 8 action */
 .qcards tr.q td:nth-child(1){font-size:30px}
 .qcards tr.q td:nth-child(3){flex:1 1 100%}
+
+/* urgency */
+.urg{display:inline-block;font-size:var(--f-micro);font-weight:700;padding:2px 8px;border-radius:var(--cornering);margin-left:6px;white-space:nowrap}
+.urg-e{background:var(--danger);color:var(--White)}
+.urg-h{background:rgba(200,16,46,.1);color:var(--danger)}
+.ai .urg-txt-e{color:#ff8a8a}.ai .urg-txt-h{color:#ffd27a}
+/* text-updates prompt (shares the duplicate dialog styles) */
+#smsModal{position:fixed;inset:0;z-index:91;background:var(--scrim);display:grid;place-items:center;padding:var(--s-base)}
+#smsModal[hidden]{display:none}
+.sms-err{color:var(--danger);font-size:var(--f-caption);margin:6px 0 0}
+#smsModal .dup-src{margin:var(--s-sm) 0 var(--s-lg)}
+#smsModal .field{font-size:16px}
+@media(max-width:700px){#smsModal{place-items:end center;padding:0 0 calc(var(--dockH) + 8px)}#smsModal .dup-box{width:calc(100% - 16px)}#smsModal .dup-actions .btn{flex:1}}
 </style>
 </head>
 <body>
@@ -467,7 +480,7 @@ body.signed-out{overflow:hidden}
 
 <main>
 <section class="view active" id="v-map">
-  <h2 id="mapTitle">What's broken on campus right now</h2>
+  <h2 id="mapTitle">Campus View</h2>
   <div class="mapgrid">
     <div class="card" id="mapCard">
       <div class="maptools"><div id="searchSlot"></div>
@@ -500,7 +513,7 @@ body.signed-out{overflow:hidden}
 </section>
 
 <section class="view" id="v-report">
-  <h2>Report an issue in 10 seconds</h2>
+  <h2>Report an issue</h2>
   <div class="report">
     <div class="card">
       <label class="f" style="margin-top:0">1 · Photo</label>
@@ -532,6 +545,7 @@ body.signed-out{overflow:hidden}
 <div class="overlay" id="overlay"></div>
 <aside class="drawer" id="drawer"><button class="close" onclick="closeDrawer()">&times;</button><div id="dBody"></div></aside>
 <div class="toast" id="toast"></div>
+<div id="smsModal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="smsTitle"><div class="dup-box" id="smsBody"></div></div>
 <div id="dupModal" hidden role="dialog" aria-modal="true" aria-labelledby="dupTitle"><div class="dup-box" id="dupBody"></div></div>
 
 <script>
@@ -578,7 +592,7 @@ const CATS={
  'Electrical':{ico:'💡',sev:2,crew:'Electrical',kw:['light','outlet','power','flicker','electric','plug','charging','bulb','spark']},
  'HVAC':{ico:'🌡️',sev:1.5,crew:'HVAC',kw:['hot','cold','ac','a/c','heat','heater','vent','air','temperature','freezing','humid','thermostat']},
  'Accessibility':{ico:'♿',sev:3,crew:'Elevator & Access',kw:['elevator','ramp','wheelchair','door opener','automatic door','accessible','ada','lift','button']},
- 'Safety':{ico:'⚠️',sev:3,crew:'Safety Response',kw:['glass','exposed','wire','trip','smoke','unsafe','hazard','broken step','railing','sharp','lock','alarm']},
+ 'Safety':{ico:'⚠️',sev:3,crew:'Safety Response',kw:['gas','smoke','fire','injur','glass','exposed','wire','trip','smoke','unsafe','hazard','broken step','railing','sharp','lock','alarm']},
  'Cleanliness':{ico:'🧹',sev:1,crew:'Custodial',kw:['trash','spill','dirty','smell','mess','overflow','stain','pest','roach','mold']},
  'Furniture & Fixtures':{ico:'🪑',sev:1,crew:'Carpentry',kw:['chair','desk','table','door','window','blind','whiteboard','projector','broken','cracked','handle']},
  'IT / Wi-Fi':{ico:'📶',sev:1.2,crew:'IT Support',kw:['wifi','wi-fi','internet','network','printer','screen','display']},
@@ -627,7 +641,7 @@ const color=s=>({Reported:'var(--reported)',Assigned:'var(--assigned)','In progr
 const fill=s=>({Reported:'#c8102e',Assigned:'#d98a00','In progress':'#051e39',Fixed:'#2e7d32'}[s]);
 const stc=s=>'st st-'+s.replace(' ','');
 const icon=i=>i.photo?`<img src="${i.photo}" alt="">`:CATS[i.cat].ico;
-const score=i=>{if(i.status==='Fixed')return 0;const c=CATS[i.cat];return Math.round(c.sev*(1+Math.log2(1+i.votes))*10+((NOW-i.created)/day)*2+(c.sev>=3?40:0))};
+const score=i=>{if(i.status==='Fixed')return 0;const c=CATS[i.cat];return Math.round(({Emergency:80,High:30,Medium:10}[i.urg]||0)+c.sev*(1+Math.log2(1+i.votes))*10+((NOW-i.created)/day)*2+(c.sev>=3?40:0))};
 const flags=i=>(i.cat==='Accessibility'?'<span class="chip ada">♿ Accessibility</span>':'')+(i.cat==='Safety'?'<span class="chip safety">⚠️ Safety</span>':'');
 const catChip=i=>flags(i)||`<span class="chip">${CATS[i.cat].ico} ${i.cat}</span>`;
 function toast(h){const t=$('#toast');t.innerHTML=h;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),4000)}
@@ -751,6 +765,8 @@ function openIssue(id){
   <div id="sat"></div>
   <div class="row2" style="justify-content:space-between"><div><b style="font-size:22px">${i.votes}</b> <span style="color:var(--ink-muted48)">people affected</span></div>
    ${i.status!=='Fixed'?`<button class="btn ${i.voted?'ghost':'gold'}" data-vote="${i.id}">${i.voted?'✓ Upvoted':'▲ This affects me too'}</button>`:''}</div>
+  ${urgBadge(i)?`<div style="margin-top:12px">${urgBadge(i)}</div>`:''}
+  ${i.sms&&role!=='facilities'?`<p class="dup-src" style="margin-top:12px">📱 Text updates on · ${i.sms}</p>`:''}
   <h3 style="margin-top:20px">Progress</h3>
   <div class="timeline">${STAGES.map((s,k)=>{const hh=i.hist.find(x=>x.s===s);return`<div class="${k<=si?'done':''}"><b>${s}</b>${hh?`<small>${new Date(hh.t).toLocaleDateString(undefined,{month:'short',day:'numeric'})}${s==='Assigned'&&i.crew?' · '+esc(i.crew)+' crew':''}</small>`:'<small>pending</small>'}</div>`}).join('')}</div>
   ${role==='facilities'&&i.status!=='Fixed'?`<button class="btn gold" style="width:100%" data-adv="${i.id}">Move to "${STAGES[si+1]}"</button>`:''}
@@ -785,6 +801,7 @@ function advance(id){
   i.status=STAGES[si+1];i.hist.push({s:i.status,t:Date.now()});if(i.status==='Assigned'&&!i.crew)i.crew=CATS[i.cat].crew;
   renderAll();if($('#drawer').classList.contains('open'))openIssue(id);
   if(i.status==='Fixed')toast(`✅ <b>Fixed:</b> ${esc(i.title)}. ${i.votes} people notified.`);
+  if(i.sms)setTimeout(()=>toast(`📱 Text sent to <b>${i.sms}</b>: your report is now “${i.status}”.`),i.status==='Fixed'?4200:2200);
 }
 
 let photoData=null,triage=null,pin=null;
@@ -835,6 +852,43 @@ $('#bld').innerHTML='<option value="">Choose a building…</option>'+['Academic 
 $('#photo').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{photoData=r.result;$('#dropTxt').style.display='none';$('#drop').querySelectorAll('img').forEach(x=>x.remove());$('#drop').insertAdjacentHTML('beforeend',`<img src="${photoData}">`);runTriage()};r.readAsDataURL(f)};
 ['#desc','#bld','#room'].forEach(s=>$(s).addEventListener('input',runTriage));$('#bld').onchange=()=>{const b=B[$('#bld').value];if(b){const x=b.x+b.w/2,y=b.y+b.h/2+6;pin={x,y,lat:b.lat,lng:b.lng,acc:null};$('#locMsg').innerHTML=`Pinned at <b>${esc(b.name)}</b>. Tap the map to be more exact.`;drawMini()}runTriage()};
 
+// ---- urgency (simulated AI): phrase rules on top of the category's base severity ----
+const URG=['Standard','Medium','High','Emergency'];
+const URG_RULES=[
+ [3,/\b(burst|bursting|busted|ruptured|broken|cracked)\s+(water\s+)?(pipe|main|line|valve)s?\b/,'burst pipe','Plumbing'],
+ [3,/\b(flood|flooding|flooded|gushing|spraying|pouring out|water everywhere|standing water)\b/,'flooding','Plumbing'],
+ [3,/\b(spark|sparks|sparked|sparking|arcing)\b/,'sparks','Electrical'],
+ [3,/\b(smoke|smoking|on fire|fire\b|burning smell|smells? (like )?burn)/,'smoke or burning','Safety'],
+ [3,/\b(gas (smell|leak)|smells? (like|of) gas|rotten egg)/,'possible gas leak','Safety'],
+ [3,/\b(exposed|live|hanging|bare|loose)\s+(electrical\s+)?wir(e|es|ing)\b/,'exposed wiring','Electrical'],
+ [3,/\b(shock|shocked|electrocut)/,'electric shock','Electrical'],
+ [3,/\b(trapped|stuck inside|someone(?:'s| is)? stuck|stuck in (the )?elevator|people stuck)\b/,'someone trapped','Accessibility'],
+ [3,/\b(carbon monoxide|co alarm|co detector)\b/,'carbon monoxide','Safety'],
+ [3,/\b(ceiling (has )?(collapsed|caving|falling|fell)|collapsed|structural)\b/,'structural damage','Safety'],
+ [3,/\b(sewage|sewer (backup|overflow)|raw sewage)\b/,'sewage','Plumbing'],
+ [3,/\b(injur|hurt|bleeding|fell and)/,'injury','Safety'],
+ [2,/\b(broken|shattered) glass\b|\bglass (everywhere|on the floor)\b/,'broken glass','Safety'],
+ [2,/\b(no (heat|heating|power|water|electricity)|power (is )?out|outage|blackout)\b/,'outage'],
+ [2,/\belevator\b.*\b(out|down|broken|not working|stuck|won'?t)/,'elevator out','Accessibility'],
+ [2,/\b(won'?t|can'?t|doesn'?t) (lock|close|latch)\b|\block (is )?broken\b|\bbroken lock\b/,'security: door won’t lock','Safety'],
+ [2,/\b(fire alarm|alarm (is )?(going off|beeping|sounding))\b/,'alarm going off','Safety'],
+ [2,/\b(trip(ping)? hazard|slippery|wet floor|loose (railing|step|handrail)|broken (step|stair|railing))\b/,'fall hazard','Safety'],
+ [2,/\b(leak|leaking|dripping)\b.*\b(ceiling|from above|from the ceiling|light fixture)\b|\bceiling\b.*\b(leak|leaking|dripping|water)\b/,'leak from ceiling','Plumbing'],
+ [2,/\btoilet\b.*\boverflow|\boverflowing toilet\b/,'overflowing toilet','Plumbing'],
+ [2,/\b(freezing|sweltering|unbearabl|extremely (hot|cold)|no (ac|a\/c|air conditioning))\b/,'extreme temperature'],
+ [1,/\b(leak|leaking|drip|dripping|clog|clogged|no hot water|backed up)\b/,'leak or clog'],
+ [1,/\b(outlet|outlets|power)\b.*\b(dead|not working|out)\b|\bdead outlet/,'no power at outlets'],
+ [1,/\b(ac|a\/c|heat|heating|air)\b.*\b(not working|broken|isn'?t working|out)\b/,'HVAC not working'],
+];
+function urgencyOf(text,cat){const t=' '+String(text).toLowerCase()+' ';const sev=CATS[cat]?CATS[cat].sev:1;
+  let lvl=sev>=3?2:sev>=2?1:0;const why=[];let hint=null;
+  URG_RULES.forEach(([l,re,label,h])=>{if(re.test(t)){why.push(label);if(l>lvl)lvl=l;if(h&&!hint)hint=h}});
+  if(/\b(water|leak|leaking|wet|dripping|flood)/.test(t)&&/\b(outlet|electrical|wire|wiring|panel|power strip|socket|light fixture)/.test(t)){why.unshift('water near electrical');lvl=3}
+  const m=t.match(/\b(\d{2,3})\s?°?\s?f\b/);if(m){const f=+m[1];if(f>=88||f<=55){why.push(f+'°F inside');if(lvl<2)lvl=2}}
+  return{level:URG[lvl],why:[...new Set(why)].slice(0,3),hint}}
+const URG_TXT={Emergency:'🚨 Emergency, crew dispatched now',High:'High, within 4 hours',Medium:'Medium, within 48 hours',Standard:'Standard, within 5 days'};
+issues.forEach(i=>{if(!i.urg)i.urg=urgencyOf(i.title,i.cat).level}); // sample data
+const urgBadge=i=>i.urg==='Emergency'?'<span class="urg urg-e">🚨 Emergency</span>':i.urg==='High'?'<span class="urg urg-h">High urgency</span>':'';
 function classify(t){
   t=' '+t.toLowerCase()+' ';const sc={};
   for(const[c,v]of Object.entries(CATS))for(const k of v.kw)if(t.includes(k.length<=3?' '+k+' ':k)||t.includes(k+'s'))sc[c]=(sc[c]||0)+(k.length>5?2:1);
@@ -845,13 +899,16 @@ function classify(t){
 function runTriage(){
   const d=$('#desc').value.trim();
   if(d.length<4){$('#ai').innerHTML='<h4>⚡ Auto-triage (simulated AI)</h4><div style="color:var(--body-muted)">Start typing a description and BuzzFix will classify it instantly.</div>';$('#dupBox').innerHTML='';triage=null;$('#submit').disabled=true;return}
-  const c=classify(d),cc=CATS[c.cat];
-  const urg=cc.sev>=3?'High, dispatched immediately':cc.sev>=2?'Medium, within 48h':'Standard, within 5 days';
+  const c=classify(d);let u=urgencyOf(d,c.cat);
+  if(u.hint&&u.hint!==c.cat){c.cat=u.hint;c.conf=Math.max(c.conf,.8);u=urgencyOf(d,c.cat)}
+  const cc=CATS[c.cat];c.urg=u.level;
   triage=c;
   $('#ai').innerHTML=`<h4>⚡ Auto-triage (simulated AI)</h4>
    <div class="row"><span>Category</span><b>${cc.ico} ${c.cat}</b></div>
    <div class="row" style="display:block"><div style="display:flex;justify-content:space-between"><span>Confidence</span><b>${Math.round(c.conf*100)}%</b></div><div class="bar"><i style="width:${c.conf*100}%"></i></div></div>
-   <div class="row"><span>Urgency</span><b>${urg}</b></div>
+   <div class="row"><span>Urgency</span><b class="${u.level==='Emergency'?'urg-txt-e':u.level==='High'?'urg-txt-h':''}">${URG_TXT[u.level]}</b></div>
+   ${u.why.length?`<div class="row"><span>Detected</span><b>${esc(u.why.join(', '))}</b></div>`:''}
+   ${u.level==='Emergency'?'<div class="row"><span>⚠️ Safety</span><b>If anyone is in danger, call 911.</b></div>':''}
    <div class="row"><span>Routed to</span><b>${cc.crew} crew</b></div>
    ${c.cat==='Accessibility'?'<div class="row"><span>♿ Alert</span><b>Disability services notified</b></div>':''}
    ${photoData?'<div class="row"><span>Photo</span><b>Attached for crew</b></div>':''}`;
@@ -863,10 +920,10 @@ function runTriage(){
 function resetForm(){pin=null;$('#locMsg').textContent='or tap the map to pin the exact spot';drawMini();$('#desc').value='';$('#room').value='';$('#bld').value='';photoData=null;$('#drop').querySelectorAll('img').forEach(x=>x.remove());$('#dropTxt').style.display='';$('#photo').value='';runTriage()}
 function createReport(extra){
   const b=$('#bld').value,bb=B[b],d=$('#desc').value.trim();
-  const i={...(extra||{}),id:++seq,title:d.charAt(0).toUpperCase()+d.slice(1),cat:triage.cat,b,loc:$('#room').value||'Not specified',status:'Reported',created:Date.now(),votes:1,voted:true,mine:true,photo:photoData,crew:'',hist:[{s:'Reported',t:Date.now()}],
+  const i={...(extra||{}),id:++seq,title:d.charAt(0).toUpperCase()+d.slice(1),cat:triage.cat,urg:triage.urg,b,loc:$('#room').value||'Not specified',status:'Reported',created:Date.now(),votes:1,voted:true,mine:true,photo:photoData,crew:'',hist:[{s:'Reported',t:Date.now()}],
     x:pin?pin.x:bb.x+bb.w/2,y:pin?pin.y:bb.y+bb.h/2+6,exact:!!pin,...(pin?{lat:pin.lat,lng:pin.lng,acc:pin.acc}:{lat:bb.lat,lng:bb.lng,acc:null})};
   issues.unshift(i);resetForm();renderAll();show('mine');
-  toast(`Report sent to <b>${CATS[i.cat].crew}</b>. We'll notify you at every step.`);
+  toast(i.sms?`Report sent to <b>${CATS[i.cat].crew}</b>. We'll text <b>${i.sms}</b> at every step.`:`Report sent to <b>${CATS[i.cat].crew}</b>. We'll notify you at every step.`);
   setTimeout(()=>{if(i.status==='Reported'){advance(i.id);toast(`🔧 <b>${CATS[i.cat].crew} crew</b> assigned to your report.`)}},6000);
 }
 
@@ -898,6 +955,29 @@ async function aiDupCheck(r,cands){
     const j=await resp.json();if(typeof j.confidence!=='number')throw new Error('bad reply');return j}
   catch(e){return localDupCheck(r,cands)}finally{clearTimeout(t)}}
 let dupPending=null;
+// ---- text-message updates (demo: nothing is actually sent) ----
+const SMS_KEY='buzzfix.smsNumber';let smsPending=null;
+const maskPhone=d=>'(•••) •••-'+d.slice(-4);
+function finalizeReport(extra){if(role!=='student')return createReport(extra);smsPending=extra||{};
+  let saved='';try{saved=localStorage.getItem(SMS_KEY)||''}catch(e){}
+  $('#smsBody').innerHTML=`<h3 id="smsTitle">Get text updates for this issue?</h3>
+   <p class="login-copy">We'll text you when it's assigned, when work starts and when it's fixed.</p>
+   <label class="f" for="smsNum">Mobile number</label>
+   <input class="field" id="smsNum" type="tel" inputmode="tel" autocomplete="tel" placeholder="(404) 555-0123" value="${esc(saved)}">
+   <p class="sms-err" id="smsErr" hidden>Enter a 10-digit US mobile number.</p>
+   <p class="dup-src">Demo only: no texts are actually sent. Reply STOP anytime to opt out.</p>
+   <div class="dup-actions"><button class="btn ghost" type="button" data-sms="no">No thanks</button><button class="btn gold" type="button" data-sms="yes">Yes, text me</button></div>`;
+  $('#smsModal').hidden=false;$('#smsNum').focus()}
+function closeSms(){$('#smsModal').hidden=true;smsPending=null}
+$('#smsModal').addEventListener('click',e=>{const b=e.target.closest('[data-sms]');
+  if(!b){if(e.target.id==='smsModal')closeSms();return}
+  e.stopPropagation();const extra=smsPending||{};
+  if(b.dataset.sms==='no'){closeSms();return createReport(extra)}
+  let d=$('#smsNum').value.replace(/\D/g,'');if(d.length===11&&d[0]==='1')d=d.slice(1);
+  if(d.length!==10){$('#smsErr').hidden=false;$('#smsNum').focus();return}
+  try{localStorage.setItem(SMS_KEY,$('#smsNum').value.trim())}catch(e){}
+  closeSms();createReport({...extra,sms:maskPhone(d)})},true);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#smsModal').hidden)closeSms();if(e.key==='Enter'&&!$('#smsModal').hidden&&e.target.id==='smsNum'){e.preventDefault();$('#smsModal [data-sms=yes]').click()}});
 function showDupModal(match,res){const i=match;
   $('#dupBody').innerHTML=`<h3 id="dupTitle">This looks like a request that has already been submitted.</h3>
   <div class="card dup-card"><div class="ico">${icon(i)}</div><div style="flex:1;min-width:0"><div class="t">${esc(i.cat)}</div><small>${esc(B[i.b].name)} · ${esc(i.loc)} · ${ago(i.created)}</small>
@@ -912,19 +992,19 @@ function setSubmitBusy(b){const s=$('#submit');s.disabled=b;s.textContent=b?'Che
 $('#submit').onclick=async()=>{
   if(!triage||!$('#bld').value||$('#submit').dataset.busy)return;
   const r=draftReport(),cands=dupCandidates(r);
-  if(!cands.length)return createReport();
+  if(!cands.length)return finalizeReport();
   $('#submit').dataset.busy=1;setSubmitBusy(true);
   const res=await aiDupCheck(r,cands);
   delete $('#submit').dataset.busy;setSubmitBusy(false);
   const match=res.duplicateId!=null&&res.confidence>=DUP_THRESHOLD?issues.find(x=>x.id===res.duplicateId):null;
-  if(!match)return createReport();
+  if(!match)return finalizeReport();
   dupPending={match,res};showDupModal(match,res)};
 $('#dupModal').addEventListener('click',e=>{const b=e.target.closest('[data-dup]');
   if(!b){if(e.target.id==='dupModal')closeDupModal();return}
   e.stopPropagation();const p=dupPending;if(!p)return closeDupModal();
   if(b.dataset.dup==='yes'){const i=p.match;if(!i.voted){i.voted=true;i.votes++}i.mine=true;closeDupModal();resetForm();renderAll();show('mine');
     toast(`Added you to the existing report. <b>${i.votes}</b> people affected. You'll get updates.`)}
-  else{closeDupModal();createReport({aiFlag:{id:p.match.id,conf:p.res.confidence,src:p.res.source}})}},true);
+  else{closeDupModal();finalizeReport({aiFlag:{id:p.match.id,conf:p.res.confidence,src:p.res.source}})}},true);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#dupModal').hidden)closeDupModal()});
 document.addEventListener('click',e=>{const a=e.target.closest('[data-openissue]');if(a){e.preventDefault();e.stopPropagation();openIssue(+a.dataset.openissue)}},true);
 document.addEventListener('click',e=>{
@@ -938,7 +1018,7 @@ document.addEventListener('click',e=>{
 });
 
 function renderMine(){
-  const l=issues.filter(i=>i.mine);
+  const staff=role==='facilities',l=staff?issues.filter(i=>i.status!=='Fixed').sort((a,b)=>score(b)-score(a)):issues.filter(i=>i.mine);
   $('#mine').innerHTML=l.length?l.map(i=>`<div class="card"><div class="issue" data-id="${i.id}" style="padding:0">${card(i).replace(/^<div class="card issue" data-id="\d+">/,'').replace(/<\/div>$/,'')}</div>
    <div style="display:flex;margin-top:12px">${STAGES.map((s,k)=>`<div style="flex:1;text-align:center;font-size:11px;font-weight:${k<=STAGES.indexOf(i.status)?700:400};color:${k<=STAGES.indexOf(i.status)?'var(--ink)':'var(--ink-muted48)'}"><div style="height:4px;margin:0 2px 6px;border-radius:2px;background:${k<=STAGES.indexOf(i.status)?color(i.status):'var(--hairline)'}"></div>${s}</div>`).join('')}</div></div>`).join('')
    :'<div class="card empty">You haven\'t reported or upvoted anything yet. <a href="#" onclick="show(\'report\');return false">Report an issue</a> or upvote one on the live map.</div>';
@@ -956,7 +1036,7 @@ function renderDash(){
    [open.reduce((a,i)=>a+i.votes,0),'People currently affected','']
   ].map(([n,l,d])=>`<div class="card stat"><div class="n">${n}</div><div class="l">${l}</div>${d?`<div class="d">${d}</div>`:''}</div>`).join('');
   const q=open.filter(matchQ).sort((a,b)=>score(b)-score(a));
-  $('#queue').innerHTML=q.map(i=>`<tr class="q" data-id="${i.id}" style="cursor:pointer"><td class="qico">${icon(i)}</td><td class="qtitle"><b>${esc(i.title)}</b></td><td>${esc(B[i.b].name)}<br><small style="color:var(--ink-muted48)">${esc(i.loc)}</small><br><a href="${gmaps(i)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:12px;color:var(--primary)">📍 Open in Maps ↗</a></td><td>${i.votes}</td><td>${ago(i.created)}</td><td><span class="${stc(i.status)}">${i.status}</span></td><td><small>${esc(i.crew||'Unassigned')}</small></td><td><button class="btn sm" data-adv="${i.id}">${i.status==='Reported'?'Assign':i.status==='Assigned'?'Start':'Mark fixed'}</button></td><td class="qscore" title="Priority score: severity × people affected + days open (+40 for accessibility/safety)"><div class="pbox"><b>${score(i)}</b><small>priority</small></div></td></tr>`).join('')||(noMatchMsg()?`<tr><td colspan="8" class="empty">${noMatchMsg()}</td></tr>`:'<tr><td colspan="8" class="empty">Queue is clear 🎉</td></tr>');
+  $('#queue').innerHTML=q.map(i=>`<tr class="q" data-id="${i.id}" style="cursor:pointer"><td class="qico">${icon(i)}</td><td class="qtitle"><b>${esc(i.title)}</b></td><td>${esc(B[i.b].name)}<br><small style="color:var(--ink-muted48)">${esc(i.loc)}</small><br><a href="${gmaps(i)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:12px;color:var(--primary)">📍 Open in Maps ↗</a></td><td>${i.votes}</td><td>${ago(i.created)}</td><td><span class="${stc(i.status)}">${i.status}</span>${urgBadge(i)}</td><td><small>${esc(i.crew||'Unassigned')}</small></td><td><button class="btn sm" data-adv="${i.id}">${i.status==='Reported'?'Assign':i.status==='Assigned'?'Start':'Mark fixed'}</button></td><td class="qscore" title="Priority score: severity × people affected + days open (+40 for accessibility/safety)"><div class="pbox"><b>${score(i)}</b><small>priority</small></div></td></tr>`).join('')||(noMatchMsg()?`<tr><td colspan="8" class="empty">${noMatchMsg()}</td></tr>`:'<tr><td colspan="8" class="empty">Queue is clear 🎉</td></tr>');
   const bc={};open.forEach(i=>bc[i.b]=(bc[i.b]||0)+1);const mx=Math.max(1,...Object.values(bc));
   $('#byBld').innerHTML=Object.entries(bc).sort((a,b)=>b[1]-a[1]).map(([b,n])=>`<div class="hbar"><span class="lab">${esc(B[b].name)}</span><span class="track"><i style="width:${n/mx*100}%"></i></span><span class="v">${n}</span></div>`).join('');
   const groups={};issues.forEach(i=>{const k=i.b+'|'+i.cat+'|'+i.loc;(groups[k]=groups[k]||[]).push(i)});
@@ -969,7 +1049,7 @@ function renderDash(){
 
 function show(v){closePeek();document.body.classList.remove('panel-open');const sec=v;if(v==='report')setTimeout(initReportMap,30);document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.id==='v-'+sec));document.querySelectorAll('#nav button,#dock button').forEach(b=>b.classList.toggle('active',b.dataset.v===v));document.body.dataset.view=sec;closeDrawer();$('#mePop').hidden=true;window.scrollTo(0,0);setTimeout(refreshReal,30);if(sec==='map')snapSheet(sheetState)}
 $('#nav').onclick=e=>{const b=e.target.closest('button');if(b)show(b.dataset.v)};
-function setRole(r){role=r;document.body.dataset.role=r;setMapTitle();drawMap();document.querySelectorAll('#role button,#mePop button').forEach(b=>b.classList.toggle('on',b.dataset.r===r));
+function setRole(r){role=r;setTimeout(renderMine,0);document.body.dataset.role=r;setMapTitle();drawMap();document.querySelectorAll('#role button,#mePop button').forEach(b=>b.classList.toggle('on',b.dataset.r===r));
   show('map')}
 $('#role').onclick=e=>{const r=e.target.dataset.r;if(r)setRole(r)};
 $('#dock').onclick=e=>{const b=e.target.closest('button');if(b)show(b.dataset.v)};
@@ -1037,7 +1117,7 @@ function snapSheet(s){sheetState=s;SH.style.height=''}
   top.addEventListener('pointerup',end);top.addEventListener('pointercancel',end)})();
 addEventListener('resize',()=>{snapSheet(sheetState);Object.values(RM).forEach(r=>{if(!r.g)r.m.invalidateSize()})});
 document.body.dataset.view='map';document.body.dataset.role=role;
-function setMapTitle(){const f=role==='facilities';$('#mapTitle').textContent=f?'Facilities dashboard':"What's broken on campus right now";}
+function setMapTitle(){const f=role==='facilities';$('#mapTitle').textContent=f?'Facilities dashboard':'Campus View';}
 
 // ---- your location (blue dot) + recenter button ----
 let me=null,watchId=null,pendingLoc=null;
