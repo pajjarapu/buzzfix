@@ -586,10 +586,21 @@ html.standalone .drawer{height:auto;bottom:calc(0px - var(--gap))}
 // installed-app (home screen) height fix: iOS reports a viewport one status bar short when the page draws under it,
 // leaving a white strip at the bottom. Measure the real screen and stretch bottom-anchored layers by the difference.
 function fitStandalone(){const de=document.documentElement,sa=matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
-  de.classList.toggle('standalone',sa);if(!sa){de.style.setProperty('--gap','0px');return}
-  const portrait=matchMedia('(orientation: portrait)').matches,full=portrait?Math.max(screen.width,screen.height):Math.min(screen.width,screen.height);
-  const gap=Math.max(0,Math.min(80,full-innerHeight));de.style.setProperty('--gap',gap+'px')}
-fitStandalone();addEventListener('resize',fitStandalone);addEventListener('orientationchange',()=>setTimeout(fitStandalone,300));
+  de.classList.toggle('standalone',sa);
+  let gap=0;
+  if(sa&&document.body){
+    // measure where a bottom:0 element really ends, instead of trusting innerHeight (iOS sometimes reports it short, sometimes not)
+    let pr=document.getElementById('vhProbe');
+    if(!pr){pr=document.createElement('div');pr.id='vhProbe';pr.style.cssText='position:fixed;left:0;bottom:0;width:1px;height:1px;pointer-events:none;visibility:hidden';document.body.appendChild(pr)}
+    const portrait=matchMedia('(orientation: portrait)').matches,full=portrait?Math.max(screen.width,screen.height):Math.min(screen.width,screen.height);
+    const bottom=pr.getBoundingClientRect().bottom;
+    gap=Math.round(full-bottom);if(gap<4||gap>80)gap=0;
+  }
+  de.style.setProperty('--gap',gap+'px')}
+fitStandalone();
+['resize','orientationchange','pageshow','focus'].forEach(ev=>addEventListener(ev,()=>{fitStandalone();setTimeout(fitStandalone,350)}));
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){fitStandalone();setTimeout(fitStandalone,350)}});
+[100,400,1000,2500,5000].forEach(t=>setTimeout(fitStandalone,t)); // iOS settles the viewport a moment after launch
 const MQ=matchMedia('(max-width:700px)'); // phone layout
 const HOME={lat:33.7765,lng:-84.3980},HOME_Z=16; // default view: GT campus
 let locFilter=null,searchMk=null,liveQ='';
@@ -1085,7 +1096,7 @@ function renderDash(){
   $('#ttf').innerHTML=Object.entries(bycat).sort((a,b)=>avg(b[1])-avg(a[1])).map(([c,a])=>`<div class="hbar"><span class="lab">${CATS[c].ico} ${esc(c)}</span><span class="track"><i style="width:${avg(a)/mt*100}%;background:var(--primary)"></i></span><span class="v">${avg(a).toFixed(1)}</span></div>`).join('');
 }
 
-function show(v){closePeek();document.body.classList.remove('panel-open');const sec=v;if(v==='report')setTimeout(initReportMap,30);document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.id==='v-'+sec));document.querySelectorAll('#nav button,#dock button').forEach(b=>b.classList.toggle('active',b.dataset.v===v));document.body.dataset.view=sec;closeDrawer();$('#mePop').hidden=true;window.scrollTo(0,0);setTimeout(refreshReal,30);if(sec==='map')snapSheet(sheetState)}
+function show(v){fitStandalone();closePeek();document.body.classList.remove('panel-open');const sec=v;if(v==='report')setTimeout(initReportMap,30);document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.id==='v-'+sec));document.querySelectorAll('#nav button,#dock button').forEach(b=>b.classList.toggle('active',b.dataset.v===v));document.body.dataset.view=sec;closeDrawer();$('#mePop').hidden=true;window.scrollTo(0,0);setTimeout(refreshReal,30);if(sec==='map')snapSheet(sheetState)}
 $('#nav').onclick=e=>{const b=e.target.closest('button');if(b)show(b.dataset.v)};
 function setRole(r){role=r;setTimeout(renderMine,0);document.body.dataset.role=r;setMapTitle();drawMap();document.querySelectorAll('#role button,#mePop button').forEach(b=>b.classList.toggle('on',b.dataset.r===r));
   show('map')}
