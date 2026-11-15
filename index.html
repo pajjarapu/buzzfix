@@ -1083,7 +1083,7 @@ function renderMine(){
   const staff=role==='facilities',l=staff?issues.filter(i=>i.status!=='Fixed').sort((a,b)=>score(b)-score(a)):issues.filter(i=>i.mine);
   $('#mine').innerHTML=l.length?l.map(i=>`<div class="card"><div class="issue" data-id="${i.id}" style="padding:0">${card(i).replace(/^<div class="card issue" data-id="\d+">/,'').replace(/<\/div>$/,'')}</div>
    <div style="display:flex;margin-top:12px">${STAGES.map((s,k)=>`<div style="flex:1;text-align:center;font-size:11px;font-weight:${k<=STAGES.indexOf(i.status)?700:400};color:${k<=STAGES.indexOf(i.status)?'var(--ink)':'var(--ink-muted48)'}"><div style="height:4px;margin:0 2px 6px;border-radius:2px;background:${k<=STAGES.indexOf(i.status)?color(i.status):'var(--hairline)'}"></div>${s}</div>`).join('')}</div></div>`).join('')
-   :'<div class="card empty">You haven\'t reported or upvoted anything yet. <a href="#" onclick="show(\'report\');return false">Report an issue</a> or upvote one on the live map.</div>';
+   :'<div class="card empty">You haven\'t <a href="#" onclick="show(\'report\');return false">reported an issue</a> yet.</div>';
 }
 
 function renderDash(){
