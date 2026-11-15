@@ -453,6 +453,21 @@ body.signed-out{overflow:hidden}
 }
 .drawer{padding-top:calc(var(--s-xxl) + env(safe-area-inset-top,0px))}
 .close{top:calc(var(--s-base) + env(safe-area-inset-top,0px))}
+
+/* ---- installed app: extend every bottom-anchored layer to the physical bottom of the screen ---- */
+:root{--gap:0px}
+html.standalone{min-height:calc(100% + env(safe-area-inset-top,0px));background:var(--canvas)}
+html.standalone body{min-height:calc(100vh + var(--gap))}
+html.standalone #login,html.standalone .overlay,html.standalone #dupModal,html.standalone #smsModal{bottom:calc(0px - var(--gap))}
+html.standalone .drawer{height:auto;bottom:calc(0px - var(--gap))}
+@media(max-width:700px){
+  html.standalone #dock{bottom:calc(0px - var(--gap))}
+  html.standalone #mapCard{bottom:calc(var(--dockH) - var(--gap))}
+  html.standalone #sheet{bottom:calc(var(--dockH) - var(--gap))}
+  html.standalone #peek{bottom:calc(var(--dockH) + 12px - var(--gap))}
+  html.standalone .toast{bottom:calc(var(--dockH) + 12px - var(--gap))}
+  html.standalone #dupModal,html.standalone #smsModal{padding-bottom:calc(var(--dockH) + 8px)}
+}
 </style>
 </head>
 <body>
@@ -568,6 +583,13 @@ body.signed-out{overflow:hidden}
 // ===== GOOGLE MAPS =====
 // Paste your Google Maps JavaScript API browser key between the quotes (it starts with "AIza").
 // Leave it empty to use the free OpenStreetMap/Esri backup map.
+// installed-app (home screen) height fix: iOS reports a viewport one status bar short when the page draws under it,
+// leaving a white strip at the bottom. Measure the real screen and stretch bottom-anchored layers by the difference.
+function fitStandalone(){const de=document.documentElement,sa=matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+  de.classList.toggle('standalone',sa);if(!sa){de.style.setProperty('--gap','0px');return}
+  const portrait=matchMedia('(orientation: portrait)').matches,full=portrait?Math.max(screen.width,screen.height):Math.min(screen.width,screen.height);
+  const gap=Math.max(0,Math.min(80,full-innerHeight));de.style.setProperty('--gap',gap+'px')}
+fitStandalone();addEventListener('resize',fitStandalone);addEventListener('orientationchange',()=>setTimeout(fitStandalone,300));
 const MQ=matchMedia('(max-width:700px)'); // phone layout
 const HOME={lat:33.7765,lng:-84.3980},HOME_Z=16; // default view: GT campus
 let locFilter=null,searchMk=null,liveQ='';
