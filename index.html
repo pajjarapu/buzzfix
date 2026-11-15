@@ -472,6 +472,7 @@ html.standalone .drawer{height:auto;bottom:calc(0px - var(--gap))}
 .myroom-btn{display:inline-flex;margin-bottom:var(--s-sm);padding:6px 12px;font-size:var(--f-caption);background:var(--parchment);border:1px solid var(--hairline);cursor:pointer}
 .myroom-btn:hover{border-color:var(--Gold)}
 .myroom-btn[hidden]{display:none}
+.vote-static{cursor:default;color:var(--ink-muted80)}
 </style>
 </head>
 <body>
@@ -789,7 +790,7 @@ function drawMap(){
 $('#map').onclick=e=>{const p=e.target.closest('.pin');if(p)return peekIssue(+p.dataset.id);const b=e.target.closest('.bld');if(!b)return closePeek();if(b){$('#bld').value=b.dataset.b;show('report');toast(`Location set to <b>${esc(B[b.dataset.b].name)}</b>`)}};
 
 function card(i){return`<div class="card issue" data-id="${i.id}"><div class="ico">${icon(i)}</div><div style="flex:1;min-width:0"><div class="t">${esc(i.cat)}</div><small>${esc(B[i.b].name)} · ${esc(i.loc)} · ${ago(i.created)}</small><div class="chips" style="margin-top:6px"><span class="${stc(i.status)}">${i.status}</span></div></div>
- ${i.status!=='Fixed'?`<button class="vote ${i.voted?'on':''}" data-vote="${i.id}"><span>▲</span><b>${i.votes}</b></button>`:`<div class="vote"><span>✓</span><b>${i.votes}</b></div>`}</div>`}
+ ${i.status==='Fixed'?`<div class="vote"><span>✓</span><b>${i.votes}</b></div>`:role==='facilities'?`<div class="vote vote-static" title="People affected"><span>▲</span><b>${i.votes}</b></div>`:`<button class="vote ${i.voted?'on':''}" data-vote="${i.id}"><span>▲</span><b>${i.votes}</b></button>`}</div>`}
 function renderFeed(){
   const cat=$('#fCat').value,st=$('#fStatus').value,so=$('#fSort').value;
   const l=issues.filter(i=>(!cat||i.cat===cat)&&(st==='open'?i.status!=='Fixed':!st||i.status===st)&&matchQ(i)).sort((a,b)=>so==='votes'?b.votes-a.votes:b.created-a.created);
@@ -799,7 +800,8 @@ function renderFeed(){
 $('#fCat').innerHTML+=Object.keys(CATS).map(c=>`<option>${c}</option>`).join('');
 ['#fCat','#fStatus','#fSort'].forEach(s=>$(s).onchange=renderFeed);
 
-function vote(id){const i=issues.find(x=>x.id===id);if(i.status==='Fixed')return;i.voted=!i.voted;i.votes+=i.voted?1:-1;renderAll();if(i.voted)toast(`Upvoted. <b>${i.votes}</b> people are affected by this.`)}
+function vote(id){if(role==='facilities')return; // upvoting is for students only
+  const i=issues.find(x=>x.id===id);if(i.status==='Fixed')return;i.voted=!i.voted;i.votes+=i.voted?1:-1;renderAll();if(i.voted)toast(`Upvoted. <b>${i.votes}</b> people are affected by this.`)}
 
 function openIssue(id){
   const i=issues.find(x=>x.id===id),si=STAGES.indexOf(i.status);
@@ -818,7 +820,7 @@ function openIssue(id){
   </div>
   <div id="sat"></div>
   <div class="row2" style="justify-content:space-between"><div><b style="font-size:22px">${i.votes}</b> <span style="color:var(--ink-muted48)">people affected</span></div>
-   ${i.status!=='Fixed'?`<button class="btn ${i.voted?'ghost':'gold'}" data-vote="${i.id}">${i.voted?'✓ Upvoted':'▲ This affects me too'}</button>`:''}</div>
+   ${i.status!=='Fixed'&&role!=='facilities'?`<button class="btn ${i.voted?'ghost':'gold'}" data-vote="${i.id}">${i.voted?'✓ Upvoted':'▲ This affects me too'}</button>`:''}</div>
   ${urgBadge(i)?`<div style="margin-top:12px">${urgBadge(i)}</div>`:''}
   ${i.sms&&role!=='facilities'?`<p class="dup-src" style="margin-top:12px">📱 Text updates on · ${i.sms}</p>`:''}
   <h3 style="margin-top:20px">Progress</h3>
@@ -1111,7 +1113,7 @@ function renderDash(){
 
 function show(v){fitStandalone();closePeek();document.body.classList.remove('panel-open');const sec=v;if(v==='report')setTimeout(initReportMap,30);document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.id==='v-'+sec));document.querySelectorAll('#nav button,#dock button').forEach(b=>b.classList.toggle('active',b.dataset.v===v));document.body.dataset.view=sec;closeDrawer();$('#mePop').hidden=true;window.scrollTo(0,0);setTimeout(refreshReal,30);if(sec==='map')snapSheet(sheetState)}
 $('#nav').onclick=e=>{const b=e.target.closest('button');if(b)show(b.dataset.v)};
-function setRole(r){role=r;setTimeout(buildBldOptions,0);setTimeout(renderMine,0);document.body.dataset.role=r;setMapTitle();drawMap();document.querySelectorAll('#role button,#mePop button').forEach(b=>b.classList.toggle('on',b.dataset.r===r));
+function setRole(r){role=r;setTimeout(buildBldOptions,0);setTimeout(renderAll,0);document.body.dataset.role=r;setMapTitle();drawMap();document.querySelectorAll('#role button,#mePop button').forEach(b=>b.classList.toggle('on',b.dataset.r===r));
   show('map')}
 $('#role').onclick=e=>{const r=e.target.dataset.r;if(r)setRole(r)};
 $('#dock').onclick=e=>{const b=e.target.closest('button');if(b)show(b.dataset.v)};
