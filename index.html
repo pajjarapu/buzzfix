@@ -3,6 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- installable app: home-screen icon, full-screen window, map under the iPhone status bar -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#051e39">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BuzzFix">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
 <title>BuzzFix · Campus Maintenance Prototype</title>
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Slab:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
@@ -437,6 +446,13 @@ body.signed-out{overflow:hidden}
 #smsModal .dup-src{margin:var(--s-sm) 0 var(--s-lg)}
 #smsModal .field{font-size:16px}
 @media(max-width:700px){#smsModal{place-items:end center;padding:0 0 calc(var(--dockH) + 8px)}#smsModal .dup-box{width:calc(100% - 16px)}#smsModal .dup-actions .btn{flex:1}}
+
+/* ---- installed app (home screen): keep the status-bar text readable over the map, and pad screens below it ---- */
+@media (display-mode: standalone) and (max-width:700px){
+  body[data-view=map]::before{content:"";position:fixed;left:0;right:0;top:0;height:calc(env(safe-area-inset-top,0px) + 16px);background:linear-gradient(rgba(5,30,57,.55),rgba(5,30,57,0));z-index:39;pointer-events:none}
+}
+.drawer{padding-top:calc(var(--s-xxl) + env(safe-area-inset-top,0px))}
+.close{top:calc(var(--s-base) + env(safe-area-inset-top,0px))}
 </style>
 </head>
 <body>
